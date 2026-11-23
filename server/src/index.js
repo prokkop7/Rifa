@@ -17,7 +17,7 @@ if(process.env.ADMIN_API_KEY.length<32)throw Error("ADMIN_API_KEY must have 32+ 
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:10,ssl:process.env.DATABASE_SSL==="true"?{rejectUnauthorized:true}:undefined});
 const app=express();app.disable("x-powered-by");
 // Only trust X-Forwarded-* headers from the loopback HTTPS tunnel connector.
-app.set("trust proxy","loopback");
+app.set("trust proxy",1); // One trusted hop: private Docker gateway to the AÇÕES-only loopback port
 app.use(helmet());app.use(cors({origin:process.env.APP_ORIGIN.split(",").map(s=>s.trim())}));
 app.use(express.json({limit:"16kb"}));
 app.use("/api",rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:"draft-7",legacyHeaders:false}));
