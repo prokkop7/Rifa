@@ -16,6 +16,25 @@
 <p class="help">O token de webhook é diferente da chave API. Após salvar, os segredos não são apresentados novamente.</p>
 <div class="actions"><button type="submit" class="primary">Testar e salvar</button><button type="button" id="check" class="outline">Verificar conexão</button></div>
 </form></div><p id="message" role="status" aria-live="polite"></p></section>
+<section class="panel compact" data-auth-only hidden id="pixDemoPanel">
+<h2>Pix direto na tela · Sandbox</h2>
+<p class="sub">Demonstração técnica independente: valor fixo de R$ 5,00, sem sorteio ou reserva de números. Nenhum dinheiro real deve ser enviado.</p>
+<form id="pixDemoForm" autocomplete="off">
+<label for="pixName">Nome completo</label><input id="pixName" type="text" maxlength="100" required placeholder="Nome do pagador" autocomplete="off">
+<label for="pixPhone">WhatsApp brasileiro</label><input id="pixPhone" type="tel" maxlength="19" required placeholder="(21) 99999-9999" autocomplete="off">
+<label for="pixCpf">CPF do pagador</label><input id="pixCpf" type="text" inputmode="numeric" maxlength="14" required placeholder="000.000.000-00" autocomplete="off">
+<p class="help">O Asaas exige CPF para cadastrar o pagador. O AÇÕES não guarda o CPF nesta demonstração; os dados são enviados ao Sandbox para emissão da cobrança.</p>
+<div class="actions"><button class="primary" id="pixGenerate" type="submit">Gerar Pix de teste · R$ 5,00</button></div>
+</form>
+<div class="pix-result" id="pixResult" hidden>
+<div class="status-row"><span>Pagamento</span><strong id="pixStatus">Aguardando</strong></div>
+<img id="pixQr" alt="QR Code Pix Sandbox da cobrança individual" width="220" height="220">
+<label for="pixPayload">Pix Copia e Cola</label><textarea id="pixPayload" rows="3" readonly spellcheck="false"></textarea>
+<div class="actions"><button class="primary" id="pixCopy" type="button">Copiar código Pix</button><button class="outline" id="pixRefresh" type="button">Consultar pagamento</button></div>
+<p class="help">Identificação única da cobrança: <code id="pixOrderId"></code>. O status é consultado no servidor e atualizado automaticamente.</p>
+</div>
+<p id="pixMessage" aria-live="polite" role="status"></p>
+</section>
 <section class="panel compact" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure esta URL na conta correspondente ao ambiente quando os webhooks estiverem habilitados. No momento, o webhook operacional continua restrito ao Sandbox.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
 <section class="panel compact" data-auth-only hidden><h2>Remover conexão</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar ambiente exibido</button></section>
 <footer>Credenciais criptografadas e independentes por ambiente. Produção ainda não recebe cobranças pelo AÇÕES.</footer>
