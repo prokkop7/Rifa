@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import pg from "pg";
-import {verifyAsaasConnection,verifyAsaasProductionConnection,verifyAsaasWebhookToken,createCommercialCheckout,createSandboxPixCustomer,createSandboxPixPayment,getSandboxPixQr,getSandboxPixPayment} from "./asaas.js";
+import {verifyAsaasConnection,verifyAsaasProductionConnection,verifyAsaasWebhookToken,createCommercialCheckout,createSandboxPixCustomer,createSandboxPixPayment,getSandboxPixQr,getSandboxPixPayment,findSandboxPixPaymentsByReference} from "./asaas.js";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -499,6 +499,51 @@ app.post("/api/admin/pix-demo",requireSecureAdminSetup,sessionAdmin,pixDemoLimit
   await pool.query("update sandbox_pix_demos set status='failed' where id=$1 and provider_payment_id is null",[id]).catch(()=>{});
   error(res,502,"Não foi possível gerar o Pix Sandbox. Verifique a configuração e tente novamente.");
  }
+});
+// Read-only Sandbox Pix ledger. Never returns payer identity or secrets.
+app.get("/api/admin/pix-demo/orders",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ try{
+  const q=await pool.query(
+   "select id,status,amount_cents,created_at,paid_at,provider_payment_id is not null as has_payment,provider_customer_id is not null as has_customer "+
+   "from sandbox_pix_demos order by created_at desc limit 50");
+  res.set("Cache-Control","no-store");
+  res.json({orders:q.rows,environment:"sandbox",purchasesEnabled:false});
+ }catch(e){next(e)}
+});
+// Recover a missing payment identifier without creating another charge.
+app.post("/api/admin/pix-demo/:id/reconcile",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
+ if(process.env.ASAAS_ENV!=="sandbox")return error(res,503,"Conciliação disponível somente no Sandbox");
+ try{
+  const q=await pool.query("select id,external_reference,provider_payment_id,status,amount_cents from sandbox_pix_demos where id=$1",[req.params.id]);
+  if(!q.rowCount)return error(res,404,"Cobrança Sandbox não encontrada");
+  const row=q.rows[0];
+  const key=(await getAsaasSettings(pool,"sandbox"))?.apiKey;
+  if(!key)return error(res,503,"Sandbox desconectado");
+  let providerId=row.provider_payment_id;
+  if(!providerId){
+   const matches=await findSandboxPixPaymentsByReference(row.external_reference,key);
+   const valid=matches.filter(p=>p.billingType==="PIX"&&Number(p.value)===row.amount_cents/100);
+   if(valid.length!==1)return res.status(409).json({
+    error:valid.length?"Mais de uma cobrança correspondente. Exige revisão manual.":"Nenhuma cobrança correspondente encontrada no Asaas.",
+    orderId:row.id,matchingPayments:valid.length,createdNewPayment:false});
+   providerId=valid[0].id;
+   await pool.query("update sandbox_pix_demos set provider_payment_id=$2 where id=$1 and provider_payment_id is null",[row.id,providerId]);
+  }
+  const payment=await getSandboxPixPayment(providerId,key);
+  const status=String(payment.status||"");
+  const localStatus=["RECEIVED","CONFIRMED"].includes(status)?"paid":
+   ["REFUNDED","REFUND_REQUESTED"].includes(status)?"refunded":
+   ["DELETED","OVERDUE"].includes(status)?"cancelled":"pending";
+  await pool.query(
+   "update sandbox_pix_demos set status=$2,paid_at=case when $2='paid' then coalesce(paid_at,now()) else paid_at end "+
+   "where id=$1 and status not in ('refunded') and (status<>'paid' or $2 in ('paid','refunded'))",
+   [row.id,localStatus]);
+  const verified=await pool.query("select status,provider_payment_id from sandbox_pix_demos where id=$1",[row.id]);
+  res.set("Cache-Control","no-store");
+  res.json({orderId:row.id,status:verified.rows[0].status,providerStatus:status,
+   recoveredPaymentId:Boolean(verified.rows[0].provider_payment_id),createdNewPayment:false});
+ }catch(e){console.error("Pix Sandbox reconcile failed",e.status||e.message);next(e)}
 });
 app.get("/api/admin/pix-demo/recent",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  try{
