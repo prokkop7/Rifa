@@ -35,6 +35,18 @@
 </div>
 <p id="pixMessage" aria-live="polite" role="status"></p>
 </section>
+<section class="panel compact" data-auth-only hidden id="reservationAuditPanel">
+<h2>Auditoria das reservas</h2>
+<p class="sub">Histórico de seleção temporária, liberação, expiração e conflitos. Os identificadores são técnicos; não são exibidos dados de contato.</p>
+<div class="audit-filters">
+<label for="auditAction">Ação</label><select id="auditAction"><option value="">Todas as ações</option></select>
+<label for="auditType">Evento</label><select id="auditType"><option value="">Todos</option><option value="created">Criada</option><option value="released">Liberada</option><option value="expired">Expirada</option><option value="conflict">Conflito</option></select>
+</div>
+<div class="actions"><button type="button" class="outline" id="auditRefresh">Atualizar auditoria</button><button type="button" class="outline" id="auditMore" hidden>Mais eventos</button></div>
+<div id="auditSummary" class="audit-summary"></div>
+<p id="auditMessage" role="status" aria-live="polite"></p>
+<div id="auditList" class="audit-list" aria-live="polite"></div>
+</section>
 <section class="panel compact" data-auth-only hidden id="actionsAdminPanel">
 <h2>Cadastrar nova ação</h2>
 <p class="sub">Crie um link individual para divulgar ações de Produto, Dinheiro ou Serviço. Os números e a compra permanecem em preparação até a regularização e habilitação da modalidade.</p>
