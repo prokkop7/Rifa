@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="t d"><title id="t">Ilustração do notebook DELL</title><desc id="d">Representação artística de notebook; sem correspondência exata a um modelo comercial específico.</desc>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0e2636"/><stop offset="1" stop-color="#101f30"/></linearGradient><linearGradient id="shell" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d8e5eb"/><stop offset=".5" stop-color="#a4bac6"/><stop offset="1" stop-color="#78919d"/></linearGradient><filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22"/></filter></defs>
+<rect width="1200" height="900" fill="url(#bg)"/><circle cx="1040" cy="120" r="300" fill="#70dccc" opacity=".10"/><circle cx="160" cy="790" r="260" fill="#70dccc" opacity=".08"/>
+<text x="80" y="100" fill="#70dccc" font-family="Arial, sans-serif" font-weight="700" font-size="30" letter-spacing="7">AÇÕES • DEMONSTRAÇÃO</text>
+<ellipse cx="625" cy="676" rx="445" ry="65" fill="#001725" opacity=".45" filter="url(#shadow)"/>
+<rect x="290" y="148" width="710" height="470" rx="22" fill="#c6d1d9" stroke="#617b8c" stroke-width="8"/>
+<rect x="307" y="165" width="676" height="427" rx="10" fill="#06121f"/>
+<defs><linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#18356c"/><stop offset=".5" stop-color="#286ca4"/><stop offset="1" stop-color="#0e2348"/></linearGradient></defs><path d="M315 175h660v412H315z" fill="url(#screen)"/><circle cx="650" cy="370" r="152" fill="#42b8ca" opacity=".13"/><path d="M335 530 700 195 955 405 750 568z" fill="#78cbd0" opacity=".14"/>
+<circle cx="646" cy="155" r="3" fill="#4d6478"/>
+<text x="650" y="385" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="118" font-weight="700" opacity=".85">DELL</text>
+<path d="M243 620H1048l115 83c11 9 4 22-10 24H124c-16-2-21-15-9-25z" fill="url(#shell)" stroke="#8297a6" stroke-width="5"/>
+<path d="M319 627H976l59 49H266z" fill="#5d7482" opacity=".68"/><path d="M564 680h172l-10 24H572z" fill="#a8bec7" stroke="#8ba2af" stroke-width="2"/>
+<path d="M122 720h1030" stroke="#f0f8fb" stroke-width="6" opacity=".65"/>
+<text x="80" y="803" fill="#ffffff" font-family="Arial,sans-serif" font-size="48" font-weight="700">Notebook Dell</text>
+<text x="80" y="848" fill="#cfdee6" font-family="Arial,sans-serif" font-size="28">Core i5 (4ª geração) • 4 GB RAM • SSD 240 GB</text>
+<text x="1050" y="851" text-anchor="end" fill="#a5c7d2" font-family="Arial,sans-serif" font-size="19">IMAGEM ILUSTRATIVA</text>
+</svg>
