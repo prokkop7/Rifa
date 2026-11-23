@@ -580,16 +580,20 @@ app.get("/api/admin/pix-demo/:id",requireSecureAdminSetup,sessionAdmin,async(req
 // Only a staging administrator can create a standalone commercial sale checkout.
 // There is intentionally no route from campaign numbers to this API.
 app.post("/api/admin/commercial-checkouts",auth,async(req,res,next)=>{
- const {organizerId,description,amountCents}=req.body||{};
- if(!uuid(organizerId)||typeof description!=="string"||description.trim().length<4||
+ const {organizerId,description,amountCents,saleType}=req.body||{};
+ if(!uuid(organizerId)||!["product","service"].includes(saleType)||typeof description!=="string"||description.trim().length<4||
    description.trim().length>120||!Number.isSafeInteger(amountCents)||amountCents<100||amountCents>100000000)
    return error(res,400,"Dados comerciais inválidos");
  const {COMMERCIAL_CHECKOUT_RETURN_BASE:base}=process.env;
  if(!base||!/^https:\/\//.test(base))return error(res,503,"Callback HTTPS não configurado");
  let orderId=null;
  try{
-  const result=await pool.query("insert into commercial_orders(organizer_id,description,amount_cents,external_reference,provider,status) select id,$2,$3,$4,'asaas','created' from organizers where id=$1 returning id,external_reference",[
-   organizerId,description.trim(),amountCents,randomUUID()
+  const environment=await getActiveAsaasEnvironment(pool);
+  const providerSettings=await getAsaasSettings(pool,environment);
+  if(!providerSettings)return error(res,409,"Configure as credenciais do ambiente "+environment+" antes de criar cobranças comerciais.");
+  // Prod requires validated credentials and an independent webhook.
+  const result=await pool.query("insert into commercial_orders(organizer_id,description,amount_cents,external_reference,provider,status,provider_environment,sale_type) select id,$2,$3,$4,'asaas','created',$5,$6 from organizers where id=$1 returning id,external_reference",[
+   organizerId,description.trim(),amountCents,randomUUID(),environment,saleType
   ]);
   if(!result.rowCount)return error(res,404,"Organizador inexistente");
   orderId=result.rows[0].id;
@@ -600,11 +604,10 @@ app.post("/api/admin/commercial-checkouts",auth,async(req,res,next)=>{
     cancelUrl:back+"/?checkoutReturn=cancel&order="+encodeURIComponent(orderId),
     expiredUrl:back+"/?checkoutReturn=expired&order="+encodeURIComponent(orderId)
   };
-  const providerSettings=await getAsaasSettings(pool);
-  if(!providerSettings)throw Error("Asaas Sandbox não configurado");
-  const checkout=await createCommercialCheckout({externalReference,title:description.trim(),amountCents,...callbacks,apiKey:providerSettings.apiKey});
+  const checkout=await createCommercialCheckout({externalReference,title:description.trim(),amountCents,...callbacks,
+   apiKey:providerSettings.apiKey,environment});
   await pool.query("update commercial_orders set provider_checkout_id=$2,status='pending' where id=$1",[orderId,checkout.checkoutId]);
-  res.status(201).json({orderId,checkoutUrl:checkout.checkoutUrl,checkoutId:checkout.checkoutId,environment:"sandbox",paid:false});
+  res.status(201).json({orderId,checkoutUrl:checkout.checkoutUrl,checkoutId:checkout.checkoutId,environment,saleType,paid:false});
  }catch(e){
   // A provider checkout may have been created before persistence failed.
   // Such orders require manual reconciliation; do not blindly retry.
@@ -615,7 +618,7 @@ app.post("/api/admin/commercial-checkouts",auth,async(req,res,next)=>{
 app.get("/api/admin/commercial-orders/:id",auth,async(req,res,next)=>{
  if(!uuid(req.params.id))return error(res,400,"Invalid id");
  try{
-  const r=await pool.query("select id,description,amount_cents,status,provider_checkout_id,created_at,paid_at from commercial_orders where id=$1",[req.params.id]);
+  const r=await pool.query("select id,description,amount_cents,status,provider_checkout_id,provider_environment,sale_type,created_at,paid_at from commercial_orders where id=$1",[req.params.id]);
   if(!r.rowCount)return error(res,404,"Order not found");
   res.json({order:r.rows[0]});
  }catch(e){next(e)}
