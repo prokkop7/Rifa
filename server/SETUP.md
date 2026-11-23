@@ -119,3 +119,16 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Segundo o suporte do Asaas (23/09/2026), pagamentos internacionais necessitam aprovação prévia, não aceitam Pix, boleto e links de pagamento e são feitos por cartão internacional. Verifique expressamente se o produto Checkout é admitido nessa modalidade.
 - O Reino Unido exige qualificação legal de free draw, incluindo via gratuita real com destaque e condições adequadas, ou outra modalidade permitida. **Nenhum checkout público de números deve ser ativado** antes dessa validação e aprovação do adquirente.
 - Situação: código de sandbox enviado ao GitHub; nenhuma conta vinculada e nenhuma transação real executada.
+
+## Painel de credenciais Asaas Sandbox (homologação)
+- Interface **servida pelo backend**: `https://SEU-BACKEND/admin/asaas`. Para desenvolvimento local: `http://localhost:3000/admin/asaas`.
+- Não existe acesso a esta tela pelo GitHub Pages, que contém apenas o frontend público estático.
+- Defina no arquivo `.env` **privado**: `ASAAS_ENV=sandbox`, `ASAAS_SETTINGS_UI_ENABLED=true`, `ADMIN_API_KEY` (mínimo 32 caracteres) e `PROVIDER_SETTINGS_ENCRYPTION_KEY` (exatos 64 caracteres hexadecimais = 32 bytes aleatórios).
+- Gere a chave de criptografia uma única vez, usando `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` em terminal seguro. **Nunca divulgue, publique ou troque a chave sem migrar os dados criptografados**.
+- Em instalações novas, o Docker Compose já monta `database/004_provider_settings.sql`; em bancos existentes, execute a migração com backup e acesso restrito.
+- A tela pede a chave administrativa, chave Asaas Sandbox e o token do webhook. Envia as credenciais ao backend por HTTPS, testa o Asaas, criptografa com AES-256-GCM e salva no PostgreSQL. Nunca devolve as credenciais no GET de status.
+- Rotas: `GET /api/admin/asaas/status`, `POST /api/admin/asaas/config`, `DELETE /api/admin/asaas/config`. Todas exigem ADMIN_API_KEY e o sinal de homologação habilitado.
+- O webhook `POST /api/webhooks/asaas` valida o token salvo criptografado. A URL exibida é a URL do backend, não a URL do GitHub Pages.
+- A página usa chave administrativa global para homologação, não substitui painel multiempresa com login, MFA e permissões por organização.
+- A conexão **não ativa a cobrança pública da rifa**. Nenhuma transação real deve ser vinculada aos números antes do modelo permitido e da aprovação do processador.
+- Em produção, mantenha `ASAAS_SETTINGS_UI_ENABLED=false` até implementar autenticação administrativa individual e controles de segurança.
