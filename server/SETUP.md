@@ -70,3 +70,12 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Depois que o GitHub indicar publicação concluída, confira a URL fornecida pelo próprio GitHub Pages. Para este projeto, o endereço esperado é `https://prokkop7.github.io/Rifa/`; não é uma confirmação de que já esteja publicado.
 - Não selecione `/ (root)`: a raiz contém o painel de homologação e arquivos de integração que não devem ser tratados como produção.
 - GitHub Pages só publica arquivos estáticos. API Node.js, PostgreSQL, autenticação e integração Asaas exigem hospedagem backend separada.
+
+
+## Publicação automática e testes (etapa seguinte)
+- Fluxo de publicação: `.github/workflows/pages.yml`, acionado por alterações em `docs/` e também manualmente.
+- Em **Settings > Pages > Build and deployment > Source**, escolha **GitHub Actions**. A orientação antiga de usar `Deploy from a branch /docs` foi substituída para utilizar o novo workflow.
+- Em **Actions**, consulte o fluxo `Publicar demonstração`; a URL final será mostrada na execução bem-sucedida. Não assumir site publicado até verificar essa confirmação.
+- O workflow envia **somente `docs/`**. Não inclui `admin.html`, API, banco de dados ou segredos.
+- Fluxo de verificações: `.github/workflows/check.yml`; instala dependências, verifica sintaxe do backend, inicia um PostgreSQL temporário, aplica `schema.sql` e verifica `/api/health`.
+- O teste automatizado precisa executar e ficar verde para confirmar que o código inicializa. Ele **não** substitui testes de segurança, concorrência, autenticação, LGPD ou produção.
