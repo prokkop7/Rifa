@@ -160,6 +160,7 @@ async function loadActions(){
   const r=await call("GET","/api/admin/actions");
   actionList.replaceChildren();
   r.actions.forEach(a=>actionList.append(actionRow(a)));
+  populateAuditActions(r.actions);await loadAudit();
   if(!r.actions.length)actionMessage("Nenhuma ação cadastrada ainda.",true);
  }catch(e){actionMessage(e.message)}
 }
@@ -190,4 +191,61 @@ $("#actionForm").addEventListener("submit",async e=>{
 $("#actionCancelEdit").addEventListener("click",()=>{resetActionForm();actionMessage("Edição cancelada.",true)});
 $("#actionReload").addEventListener("click",loadActions);
 
+// No personal contact details are exposed by the reservation audit API.
+let auditCursor=null,auditLoading=false;
+const auditNames={created:"Reservado",released:"Liberado",expired:"Expirado",conflict:"Conflito"};
+function auditMessage(msg){$("#auditMessage").textContent=msg}
+function populateAuditActions(actions){
+ const select=$("#auditAction"),saved=select.value;
+ select.replaceChildren();
+ const all=document.createElement("option");all.value="";all.textContent="Todas as ações";select.append(all);
+ for(const a of actions){
+  const option=document.createElement("option");option.value=a.slug;
+  option.textContent=a.title+(a.state==="archived"?" (arquivada)":"");
+  select.append(option);
+ }
+ if([...select.options].some(x=>x.value===saved))select.value=saved;
+}
+function renderAuditSummary(summary){
+ const target=$("#auditSummary");target.replaceChildren();
+ for(const key of ["created","released","expired","conflict"]){
+  const entry=document.createElement("span");entry.className="audit-metric";
+  const n=document.createElement("strong");n.textContent=String(summary[key]||0);
+  entry.append(document.createTextNode(auditNames[key]+": "),n);target.append(entry);
+ }
+}
+function appendAuditRows(events){
+ const container=$("#auditList");
+ for(const a of events){
+  const row=document.createElement("div");row.className="audit-row";
+  const headline=document.createElement("strong");headline.textContent=auditNames[a.event_type]||a.event_type;
+  headline.className="audit-type audit-"+a.event_type;
+  const meta=document.createElement("span");meta.textContent="Nº "+String(a.number).padStart(3,"0")+" · "+a.action_slug;
+  const time=document.createElement("small");time.textContent=new Date(a.occurred_at).toLocaleString("pt-BR");
+  row.append(headline,meta,time);container.append(row);
+ }
+}
+async function loadAudit(append=false){
+ if(auditLoading)return;
+ auditLoading=true;
+ $("#auditRefresh").disabled=true;$("#auditMore").disabled=true;
+ try{
+  const params=new URLSearchParams();
+  if($("#auditAction").value)params.set("action",$("#auditAction").value);
+  if($("#auditType").value)params.set("type",$("#auditType").value);
+  if(append&&auditCursor)params.set("before",auditCursor);
+  const r=await call("GET","/api/admin/reservation-audit?"+params);
+  if(!append)$("#auditList").replaceChildren();
+  appendAuditRows(r.events||[]);
+  renderAuditSummary(r.summary||{});
+  auditCursor=r.nextCursor||null;
+  $("#auditMore").hidden=!r.hasMore;
+  auditMessage(r.events.length?"Eventos encontrados: "+r.events.length:"Nenhum evento neste filtro.");
+ }catch(e){auditMessage(e.message)}
+ finally{auditLoading=false;$("#auditRefresh").disabled=false;$("#auditMore").disabled=false}
+}
+$("#auditAction").addEventListener("change",()=>loadAudit());
+$("#auditType").addEventListener("change",()=>loadAudit());
+$("#auditRefresh").addEventListener("click",()=>loadAudit());
+$("#auditMore").addEventListener("click",()=>loadAudit(true));
 refreshTabs();checkSession();
