@@ -168,7 +168,8 @@ function formatManualRequestMessage(r){
 async function sendManualRequestNotification(orderId){
  const claimed=await pool.query(
   "update action_manual_requests set notification_status='sending',notification_attempts=notification_attempts+1,updated_at=now() "+
-  "where id=$1 and status='reserved' and notification_status in ('pending','failed') returning id",
+  "where id=$1 and status='reserved' and (notification_status in ('pending','failed') or "+
+  "(notification_status='sending' and updated_at<now()-interval '2 minutes')) returning id",
   [orderId]);
  if(!claimed.rowCount)return {attempted:false};
  try{
@@ -256,6 +257,12 @@ app.post("/api/actions/:slug/manual-requests",manualRequestLimiter,async(req,res
    await client.query("ROLLBACK");return error(res,400,"Número fora do intervalo ou limite da ação");
   }
   await expireManualRequests(client,action.id);
+  const existingPhone=await client.query(
+   "select coalesce(sum(quantity),0)::int as count from action_manual_requests where action_id=$1 and contact_phone=$2 and status='reserved' and expires_at>now()",
+   [action.id,normalized]);
+  if(existingPhone.rows[0].count+numbers.length>action.max_numbers_per_person){
+   await client.query("ROLLBACK");return error(res,409,"Limite de números por contato atingido");
+  }
   const taken=await client.query(
    "select number from action_manual_request_numbers where action_id=$1 and number=any($2::int[]) "+
    "union select number from action_number_holds where action_id=$1 and number=any($2::int[]) and expires_at>now() "+
