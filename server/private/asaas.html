@@ -1,16 +1,22 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>AÇÕES • Integração Asaas Sandbox</title><link rel="stylesheet" href="/admin/asaas/styles.css"></head>
-<body><main class="shell"><header><div><div class="brand">A<span>Ç</span>ÕES</div><p>Configurações de pagamento</p></div><span class="tag">SANDBOX</span></header>
-<section class="panel"><h1>Conectar Asaas</h1><p class="sub">Cadastre as credenciais do ambiente de testes. Nenhuma cobrança real será ativada por esta configuração.</p>
-<div class="status-row"><span>Conexão</span><strong id="connection">Não verificada</strong></div>
-<form id="loginForm" autocomplete="off"><label for="loginEmail">E-mail administrativo</label><input id="loginEmail" type="email" value="wr.life10@gmail.com" required autocomplete="username"><label for="loginPassword">Senha</label><input id="loginPassword" type="password" minlength="6" required autocomplete="current-password"><div class="actions"><button class="primary" type="submit">Entrar</button></div></form><div id="secureSettings" hidden><div class="actions"><button type="button" class="outline" id="logout">Sair da administração</button></div><form id="configForm" autocomplete="off">
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>AÇÕES • Integração Asaas</title><link rel="stylesheet" href="/admin/asaas/styles.css"></head>
+<body><main class="shell"><header><div><div class="brand">A<span>Ç</span>ÕES</div><p>Configurações de pagamento</p></div><span class="tag" id="activeBadge">ATIVO: SANDBOX</span></header>
+<section class="panel"><h1>Conectar Asaas</h1><p class="sub">Cadastre as credenciais dos dois ambientes de forma independente. Nenhuma cobrança real será ativada apenas por selecionar Produção.</p>
+<div class="status-row"><span>Conexão do ambiente exibido</span><strong id="connection">Não verificada</strong></div>
+<form id="loginForm" autocomplete="off"><label for="loginEmail">E-mail administrativo</label><input id="loginEmail" type="email" value="wr.life10@gmail.com" required autocomplete="username"><label for="loginPassword">Senha</label><input id="loginPassword" type="password" minlength="6" required autocomplete="current-password"><div class="actions"><button class="primary" type="submit">Entrar</button></div></form><div id="secureSettings" hidden><div class="actions"><button type="button" class="outline" id="logout">Sair da administração</button></div><div class="environment-tabs" role="group" aria-label="Ambiente Asaas">
+<button type="button" id="tabSandbox" class="env-tab selected" aria-pressed="true" data-environment="sandbox">Sandbox</button>
+<button type="button" id="tabProduction" class="env-tab" aria-pressed="false" data-environment="production">Produção</button></div>
+<div class="status-row"><span>Ambiente escolhido para uso futuro</span><strong id="activeEnvironment">Sandbox</strong></div>
+<button type="button" class="outline" id="setActive">Definir ambiente exibido como ativo</button>
+<p class="help">O seletor salva sua preferência. Cobranças reais continuam bloqueadas até habilitação operacional.</p>
+<form id="configForm" autocomplete="off">
 
-<label for="apiKey">Chave de API Asaas Sandbox</label><input id="apiKey" type="password" required autocomplete="off" spellcheck="false" placeholder="$aact_...">
+<label for="apiKey"><span id="keyEnvironmentLabel">Chave de API Asaas Sandbox</span></label><input id="apiKey" type="password" required autocomplete="off" spellcheck="false" placeholder="$aact_...">
 <label for="webhookToken">Token de autenticação do webhook</label><input id="webhookToken" type="password" minlength="32" maxlength="255" required autocomplete="off" spellcheck="false" placeholder="Mínimo 32 caracteres, sem espaços">
 <p class="help">O token de webhook é diferente da chave API. Após salvar, os segredos não são apresentados novamente.</p>
 <div class="actions"><button type="submit" class="primary">Testar e salvar</button><button type="button" id="check" class="outline">Verificar conexão</button></div>
 </form></div><p id="message" role="status" aria-live="polite"></p></section>
-<section class="panel compact" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure a URL HTTPS do seu backend na conta Sandbox e o mesmo token informado acima.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
-<section class="panel compact" data-auth-only hidden><h2>Remover conexão</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar Sandbox</button></section>
-<footer>Acesso administrativo de homologação. Não utilize chaves de produção nesta tela.</footer>
+<section class="panel compact" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure esta URL na conta correspondente ao ambiente quando os webhooks estiverem habilitados. No momento, o webhook operacional continua restrito ao Sandbox.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
+<section class="panel compact" data-auth-only hidden><h2>Remover conexão</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar ambiente exibido</button></section>
+<footer>Credenciais criptografadas e independentes por ambiente. Produção ainda não recebe cobranças pelo AÇÕES.</footer>
 </main><script src="/admin/asaas/app.js" defer></script></body></html>
