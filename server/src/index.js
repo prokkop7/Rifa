@@ -165,6 +165,48 @@ try{const r=await pool.query("insert into campaigns(organizer_id,title,descripti
 /* Staging-only system administrator endpoints. Do not expose the master API key to a browser. */
 
 // Admin-only Asaas sandbox connection diagnostic. Does not initiate charges.
+// Isolated sandbox admin login; sessions expire on restart.
+const adminSessions=new Map();
+const adminLoginLimiter=rateLimit({windowMs:15*60*1000,limit:6,standardHeaders:"draft-7",legacyHeaders:false});
+function adminCookie(req){return (req.get("cookie")||"").split(";").map(s=>s.trim()).find(s=>s.startsWith("acoes_admin="))?.slice(12)||""}
+function sessionAdmin(req,res,next){
+ const token=adminCookie(req);
+ const session=adminSessions.get(digest(token));
+ if(!token||!session||session.expiresAt<Date.now())return error(res,401,"Faça login");
+ const origin=req.protocol+"://"+req.get("host");
+ if(!["GET","HEAD","OPTIONS"].includes(req.method)&&req.get("origin")!==origin)return error(res,403,"Origem não autorizada");
+ next();
+}
+function requireAdminLoginReady(req,res,next){
+ if(process.env.ASAAS_SETTINGS_UI_ENABLED!=="true")return error(res,404,"Not found");
+ if(!req.secure&&!["localhost","127.0.0.1"].includes(req.hostname))return error(res,403,"HTTPS required");
+ res.set("Cache-Control","no-store");next();
+}
+app.post("/api/admin/asaas/login",requireAdminLoginReady,adminLoginLimiter,async(req,res)=>{
+ const {email,password}=req.body||{};
+ const validEmail=typeof email==="string"&&email.toLowerCase().trim()===process.env.ADMIN_LOGIN_EMAIL?.toLowerCase();
+ const validPassword=typeof password==="string"&&password.length>=6&&password.length<=128;
+ const salt=process.env.ADMIN_PASSWORD_SALT,expected=process.env.ADMIN_PASSWORD_HASH;
+ if(!validEmail||!validPassword||!/^[a-f0-9]{48}$/i.test(salt||"")||!/^[a-f0-9]{128}$/i.test(expected||""))
+   return error(res,401,"Credenciais inválidas");
+ try{
+  if(!await checkPassword(password,salt,expected))return error(res,401,"Credenciais inválidas");
+  const token=randomBytes(32).toString("hex");
+  for(const [key,item] of adminSessions){if(item.expiresAt<Date.now())adminSessions.delete(key)}
+  if(adminSessions.size>=10)adminSessions.delete(adminSessions.keys().next().value);
+  adminSessions.set(digest(token),{expiresAt:Date.now()+8*60*60*1000});
+  res.set("Cache-Control","no-store");
+  res.cookie("acoes_admin",token,{httpOnly:true,secure:req.secure,sameSite:"strict",path:"/api/admin/asaas",maxAge:8*60*60*1000});
+  res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL});
+ }catch(e){console.error("Admin login error",e.message);return error(res,500,"Erro interno")}
+});
+app.get("/api/admin/asaas/session",requireAdminLoginReady,sessionAdmin,(req,res)=>res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL}));
+app.post("/api/admin/asaas/logout",requireAdminLoginReady,sessionAdmin,(req,res)=>{
+ adminSessions.delete(digest(adminCookie(req)));
+ res.clearCookie("acoes_admin",{path:"/api/admin/asaas",sameSite:"strict",secure:req.secure,httpOnly:true});
+ res.json({authenticated:false});
+});
+
 const sandboxUiEnabled=process.env.ASAAS_SETTINGS_UI_ENABLED==="true";
 function requireSecureAdminSetup(req,res,next){
  if(!sandboxUiEnabled)return error(res,404,"Not found");
@@ -180,7 +222,7 @@ for(const [route,file,type] of [
 ]){
  app.get(route,requireSecureAdminSetup,(req,res)=>res.type(type).sendFile(fileURLToPath(new URL(file,import.meta.url))));
 }
-app.get("/api/admin/asaas/status",requireSecureAdminSetup,auth,async(req,res,next)=>{
+app.get("/api/admin/asaas/status",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  try{
   const creds=await getAsaasSettings(pool);
   if(!creds)return res.json({configured:false,connected:false,environment:"sandbox"});
@@ -188,7 +230,7 @@ app.get("/api/admin/asaas/status",requireSecureAdminSetup,auth,async(req,res,nex
   res.json({...result,updatedAt:creds.updatedAt});
  }catch(e){next(e)}
 });
-app.post("/api/admin/asaas/config",requireSecureAdminSetup,auth,async(req,res,next)=>{
+app.post("/api/admin/asaas/config",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  const issue=validateAsaasSandboxSettings(req.body);
  if(issue)return error(res,400,issue);
  try{
@@ -198,7 +240,7 @@ app.post("/api/admin/asaas/config",requireSecureAdminSetup,auth,async(req,res,ne
    res.status(201).json({...saved,connected:true});
  }catch(e){next(e)}
 });
-app.delete("/api/admin/asaas/config",requireSecureAdminSetup,auth,async(req,res,next)=>{
+app.delete("/api/admin/asaas/config",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  try{res.json(await deleteAsaasSettings(pool))}catch(e){next(e)}
 });
 // Receive commercial payment events only; never allocate campaign numbers via payment events.
