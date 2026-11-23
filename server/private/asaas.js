@@ -1,8 +1,8 @@
 "use strict";
 const $=selector=>document.querySelector(selector);
 let currentEnvironment="sandbox",activeEnvironment="sandbox";
-const webhookUrl=location.origin+"/api/webhooks/asaas";
-$("#webhookUrl").textContent=webhookUrl;
+const webhookUrl=()=>location.origin+(currentEnvironment==="production"?"/api/webhooks/asaas/production":"/api/webhooks/asaas");
+$("#webhookUrl").textContent=webhookUrl();
 function status(message,good=false){const p=$("#message");p.textContent=message;p.className=good?"good":"error"}
 const adminPages=new Set(["overview","actions","reservations","pix","asaas","security"]);
 let currentAdminPage="overview",adminAuthenticated=false;
@@ -48,6 +48,9 @@ async function call(method,path,body){
 async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions();await refreshPixLedger()}catch{signedIn(false)}}
 function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="PREFERÊNCIA: "+activeEnvironment.toUpperCase();
  $("#dashboardEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";
+ $("#dashboardCheckoutMode").textContent=activeEnvironment==="sandbox"?"Sandbox (teste)":"Produção (real)";
+ $("#commercialEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox (teste)":"Produção (real)";
+ $("#webhookUrl").textContent=webhookUrl();
 $("#apiKey").value="";$("#webhookToken").value="";}
 async function runCheck(){
  const button=$("#check");button.disabled=true;
@@ -87,9 +90,9 @@ $("#remove").addEventListener("click",async()=>{
  if(!confirm("Desconectar credenciais de "+currentEnvironment+"?"))return;
  try{await call("DELETE","/api/admin/asaas/config?environment="+encodeURIComponent(currentEnvironment));$("#connection").textContent="Não configurado";status("Credenciais de "+currentEnvironment+" removidas.",true)}catch(e){status(e.message)}
 });
-$("#copyUrl").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(webhookUrl);status("Endereço copiado.",true)}catch{status("Copie o endereço exibido acima.")}});
+$("#copyUrl").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(webhookUrl());status("Endereço copiado.",true)}catch{status("Copie o endereço exibido acima.")}});
 document.querySelectorAll("[data-environment]").forEach(btn=>btn.addEventListener("click",async()=>{currentEnvironment=btn.dataset.environment;refreshTabs();if(!$("#secureSettings").hidden)await runCheck()}));
-$("#setActive").addEventListener("click",async()=>{try{if(!confirm("Selecionar "+currentEnvironment+" como ambiente preferido? Isso NÃO ativa cobranças reais."))return;const r=await call("POST","/api/admin/asaas/active-environment",{environment:currentEnvironment});activeEnvironment=r.activeEnvironment;refreshTabs();status("Preferência salva: "+activeEnvironment+". Cobranças reais permanecem desativadas.",true)}catch(e){status(e.message)}});
+$("#setActive").addEventListener("click",async()=>{try{if(!confirm("Definir "+currentEnvironment+" para novos checkouts comerciais de Produto ou Serviço? A alteração não cria cobranças automaticamente."))return;const r=await call("POST","/api/admin/asaas/active-environment",{environment:currentEnvironment});activeEnvironment=r.activeEnvironment;refreshTabs();status("Ambiente comercial ativo: "+activeEnvironment+". Novos checkouts de produtos ou serviços usarão este ambiente. Nenhum pagamento foi criado.",true)}catch(e){status(e.message)}});
 
 let pixOrderId=null,pixPoll=null,pixPayload="";
 function pixNotice(msg,isGood=false){const el=$("#pixMessage");el.textContent=msg;el.className=isGood?"good":"error"}
