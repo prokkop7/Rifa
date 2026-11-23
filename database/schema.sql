@@ -179,3 +179,25 @@ alter table commercial_orders enable row level security;
 alter table payment_events enable row level security;
 -- Criar policies por tenant, endpoints server-side e funções transacionais após autenticação.
 -- Não usar service_role ou credenciais Asaas no navegador.
+
+
+-- User credentials and revocable bearer sessions.
+-- Accounts created here are unverified until a dedicated phone-OTP integration is added.
+create table if not exists participant_accounts (
+ id uuid primary key default gen_random_uuid(),
+ participant_id uuid not null unique references participants(id) on delete cascade,
+ password_salt text not null,
+ password_hash text not null,
+ created_at timestamptz not null default now()
+);
+create table if not exists participant_sessions (
+ id uuid primary key default gen_random_uuid(),
+ account_id uuid not null references participant_accounts(id) on delete cascade,
+ token_hash text not null unique,
+ expires_at timestamptz not null,
+ revoked_at timestamptz,
+ created_at timestamptz not null default now()
+);
+create index if not exists participant_sessions_account_idx on participant_sessions(account_id);
+alter table participant_accounts enable row level security;
+alter table participant_sessions enable row level security;
