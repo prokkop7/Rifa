@@ -27,7 +27,7 @@ export async function verifyAsaasConnection(apiKeyOverride){
   try {await request("/myAccount/status/",{},apiKeyOverride);return {configured:true,connected:true,environment:"sandbox"}}
   catch(e){return {configured:true,connected:false,environment:"sandbox",httpStatus:e.status||null}}
 }
-export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl}){
+export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl,apiKey}){
  if(!/^[a-zA-Z0-9-]{12,200}$/.test(externalReference))throw Error("Invalid order reference");
  if(typeof title!=="string"||title.trim().length<4||title.length>120)throw Error("Invalid order title");
  if(!Number.isSafeInteger(amountCents)||amountCents<100)throw Error("Invalid commercial amount");
@@ -36,13 +36,13 @@ export async function createCommercialCheckout({externalReference,title,amountCe
    if(parsed.protocol!=="https:"&&parsed.hostname!=="localhost")throw Error("Checkout callbacks must use HTTPS");
  }
  const data=await request("/checkouts",{method:"POST",body:JSON.stringify({
-  billingTypes:["PIX","CREDIT_CARD"],
+  billingTypes:["PIX"],
   chargeTypes:["DETACHED"],
   minutesToExpire:10,
   externalReference,
   callback:{successUrl,cancelUrl,expiredUrl},
   items:[{name:title.trim(),description:"Pedido comercial independente de qualquer sorteio",quantity:1,value:amountCents/100}]
- })});
+ })},apiKey);
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
  return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment:"sandbox"};
 }
