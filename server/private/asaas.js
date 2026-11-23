@@ -4,7 +4,41 @@ let currentEnvironment="sandbox",activeEnvironment="sandbox";
 const webhookUrl=location.origin+"/api/webhooks/asaas";
 $("#webhookUrl").textContent=webhookUrl;
 function status(message,good=false){const p=$("#message");p.textContent=message;p.className=good?"good":"error"}
-function signedIn(on){$("#loginForm").hidden=on;$("#secureSettings").hidden=!on;document.querySelectorAll("[data-auth-only]").forEach(el=>el.hidden=!on);}
+const adminPages=new Set(["overview","actions","reservations","pix","asaas","security"]);
+let currentAdminPage="overview",adminAuthenticated=false;
+function activateAdminPage(name){
+ if(!adminPages.has(name))name="overview";
+ currentAdminPage=name;
+ const nextHash="#"+name;
+ if(location.hash!==nextHash)history.replaceState(null,"",nextHash);
+ for(const el of document.querySelectorAll("[data-panel-page]")){
+  el.hidden=!adminAuthenticated||el.dataset.panelPage!==name;
+ }
+ for(const btn of document.querySelectorAll("[data-admin-page]")){
+  const active=btn.dataset.adminPage===name;
+  btn.classList.toggle("active",active);
+  if(active)btn.setAttribute("aria-current","page");else btn.removeAttribute("aria-current");
+ }
+ if(name==="asaas"&&adminAuthenticated)runCheck();
+ window.scrollTo({top:0,behavior:"instant"});
+}
+document.querySelectorAll("[data-admin-page]").forEach(b=>b.addEventListener("click",()=>activateAdminPage(b.dataset.adminPage)));
+document.querySelectorAll("[data-go-page]").forEach(b=>b.addEventListener("click",()=>activateAdminPage(b.dataset.goPage)));
+window.addEventListener("hashchange",()=>{const page=location.hash.slice(1);if(adminPages.has(page)&&adminAuthenticated)activateAdminPage(page)});
+function signedIn(on){
+ adminAuthenticated=on;
+ $("#loginForm").hidden=on;
+ $("#secureSettings").hidden=!on;
+ $("#adminNavigation").hidden=!on;
+ if(!on){
+  for(const el of document.querySelectorAll("[data-panel-page]"))el.hidden=true;
+  $("#asaasSettingsPanel").hidden=false; // login only, all controls remain locked
+  currentAdminPage="overview";
+ }else{
+  const hash=location.hash.slice(1);
+  activateAdminPage(adminPages.has(hash)?hash:currentAdminPage);
+ }
+}
 async function call(method,path,body){
  const response=await fetch(path,{method,headers:{"accept":"application/json",...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),credentials:"same-origin",cache:"no-store"});
  const result=await response.json().catch(()=>({}));
@@ -12,7 +46,9 @@ async function call(method,path,body){
  return result;
 }
 async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions();await refreshPixLedger()}catch{signedIn(false)}}
-function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="ATIVO: "+activeEnvironment.toUpperCase();$("#apiKey").value="";$("#webhookToken").value="";}
+function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="PREFERÊNCIA: "+activeEnvironment.toUpperCase();
+ $("#dashboardEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";
+$("#apiKey").value="";$("#webhookToken").value="";}
 async function runCheck(){
  const button=$("#check");button.disabled=true;
  try{
@@ -27,7 +63,7 @@ $("#loginForm").addEventListener("submit",async e=>{
  try{
   await call("POST","/api/admin/asaas/login",{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value});
   $("#loginPassword").value="";
-  signedIn(true);status("Acesso administrativo autorizado.",true);await runCheck();await loadActions();
+  signedIn(true);status("Acesso administrativo autorizado.",true);await runCheck();await loadActions();await refreshPixLedger();
  }catch(e){status(e.message)}finally{submit.disabled=false}
 });
 $("#logout").addEventListener("click",async()=>{
@@ -148,6 +184,7 @@ function resetActionForm(){
  editingAction=null;$("#actionForm").reset();
  $("#actionCount").value="100";$("#actionMax").value="10";$("#actionPrice").value="0.00";
  $("#actionSave").textContent="Criar ação e gerar link";$("#actionCancelEdit").hidden=true;
+ $("#actionFormDetails").open=false;$("#actionFormSummary").textContent="+ Cadastrar nova ação";
 }
 function editAction(a){
  editingAction=a.id;
@@ -161,6 +198,7 @@ function editAction(a){
  };
  for(const [id,value]of Object.entries(fields))$("#"+id).value=value;
  $("#actionSave").textContent="Salvar alterações";$("#actionCancelEdit").hidden=false;
+ $("#actionFormDetails").open=true;$("#actionFormSummary").textContent="Editar ação: "+a.title;
  actionMessage("Editando: "+a.title,true);
  $("#actionForm").scrollIntoView({behavior:"smooth",block:"start"});
 }
