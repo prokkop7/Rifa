@@ -2,7 +2,7 @@
 // Campaign entries and numbered prize draws MUST NOT use this module.
 import { timingSafeEqual } from "node:crypto";
 const API = "https://api-sandbox.asaas.com/v3";
-const CHECKOUT_BASE = "https://asaas.com/checkoutSession/show?id=";
+const CHECKOUT_BASE = "https://sandbox.asaas.com/checkoutSession/show/";
 
 function settings(apiKeyOverride) {
   if(process.env.ASAAS_ENV !== "sandbox") throw Error("Only Asaas sandbox is enabled");
@@ -46,7 +46,7 @@ export async function createCommercialCheckout({externalReference,title,amountCe
  const data=await request("/checkouts",{method:"POST",body:JSON.stringify({
   billingTypes:["PIX"],
   chargeTypes:["DETACHED"],
-  minutesToExpire:10,
+  minutesToExpire:60,
   externalReference,
   callback:{successUrl,cancelUrl,expiredUrl},
   items:[{name:title.trim().slice(0,30),description:title.trim(),quantity:1,value:amountCents/100}]
