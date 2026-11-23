@@ -88,14 +88,14 @@ app.post("/api/auth/logout",requireParticipant,async(req,res,next)=>{
 // Public previews only. Paid-number transactions remain unavailable.
 app.get("/api/actions",async(req,res,next)=>{
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count,created_at from action_catalog where state='preview' order by created_at desc limit 100");
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,created_at from action_catalog where state='preview' order by created_at desc limit 100");
   res.set("Cache-Control","public, max-age=45");res.json({actions:q.rows,purchasesEnabled:false});
  }catch(e){next(e)}
 });
 app.get("/api/actions/:slug",async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
   if(!q.rowCount)return error(res,404,"Ação não encontrada");
   res.set("Cache-Control","public, max-age=45");res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
@@ -294,23 +294,53 @@ app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAd
  }catch(e){next(e)}
 });
 // Create, list and archive individual shareable action previews.
+// Administer configuration of individually linked action previews.
+// Prices are display-only. Payment routes do not allocate campaign numbers.
+const actionFields="id,slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,state,created_at";
+function parseActionInput(body){
+ const title=String(body?.title||"").trim(),description=String(body?.description||"").trim();
+ const prizeDetails=String(body?.prizeDetails||"").trim(),rulesText=String(body?.rulesText||"").trim();
+ const category=body?.category,numberCount=Number(body?.numberCount);
+ const priceCents=Number(body?.priceCents),maxPerPerson=Number(body?.maxPerPerson);
+ const imageUrl=String(body?.imageUrl||"").trim(),regulationUrl=String(body?.regulationUrl||"").trim();
+ const startsAt=body?.startsAt||null,endsAt=body?.endsAt||null;
+ const httpsUrl=x=>{try{const u=new URL(x);return u.protocol==="https:"&&!!u.hostname&&!u.username&&!u.password}catch{return false}};
+ if(!["product","money","service"].includes(category)||title.length<4||title.length>110||
+  description.length>3000||prizeDetails.length>3000||rulesText.length>6000||
+  !Number.isSafeInteger(numberCount)||numberCount<1||numberCount>10000||
+  !Number.isSafeInteger(priceCents)||priceCents<0||priceCents>100000000||
+  !Number.isSafeInteger(maxPerPerson)||maxPerPerson<1||maxPerPerson>numberCount||
+  (imageUrl&&(!httpsUrl(imageUrl)||imageUrl.length>1200))||
+  (regulationUrl&&(!httpsUrl(regulationUrl)||regulationUrl.length>1200))||
+  (startsAt&&(typeof startsAt!=="string"||isNaN(Date.parse(startsAt))))||
+  (endsAt&&(typeof endsAt!=="string"||isNaN(Date.parse(endsAt))))||
+  (startsAt&&endsAt&&Date.parse(endsAt)<=Date.parse(startsAt)))return null;
+ return {title,description,prizeDetails,rulesText,category,numberCount,priceCents,maxPerPerson,imageUrl:imageUrl||null,regulationUrl:regulationUrl||null,startsAt,endsAt};
+}
 app.get("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
- try{const q=await pool.query("select id,slug,category,title,description,image_url,number_count,state,created_at from action_catalog order by created_at desc limit 200");res.json({actions:q.rows})}catch(e){next(e)}
+ try{const q=await pool.query("select "+actionFields+" from action_catalog order by created_at desc limit 200");res.json({actions:q.rows})}catch(e){next(e)}
 });
 app.post("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
- const title=String(req.body?.title||"").trim();
- const description=String(req.body?.description||"").trim();
- const category=req.body?.category;
- const numberCount=Number(req.body?.numberCount);
- const imageUrl=String(req.body?.imageUrl||"").trim();
- if(!["product","money","service"].includes(category)||title.length<4||title.length>110||description.length>3000||
-  !Number.isInteger(numberCount)||numberCount<1||numberCount>10000||
-  (imageUrl&&(!/^https:\/\/[a-z0-9.-]+\/\S*$/i.test(imageUrl)||imageUrl.length>1200)))
-  return error(res,400,"Preencha tipo, título, descrição e quantidade válida. Imagem deve usar HTTPS.");
+ const data=parseActionInput(req.body);
+ if(!data)return error(res,400,"Verifique tipo, título, preço, regras, quantidade, limites, URLs HTTPS e datas.");
  try{
-  const slug=title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,56)+"-"+randomBytes(4).toString("hex");
-  const q=await pool.query("insert into action_catalog(slug,category,title,description,image_url,number_count) values($1,$2,$3,$4,$5,$6) returning id,slug,category,title,state",[slug,category,title,description,imageUrl||null,numberCount]);
+  const slug=data.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,56)+"-"+randomBytes(4).toString("hex");
+  const q=await pool.query(
+   "insert into action_catalog(slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning "+actionFields,
+   [slug,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt]);
   res.status(201).json({action:q.rows[0],purchasesEnabled:false});
+ }catch(e){next(e)}
+});
+app.put("/api/admin/actions/:id",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Ação inválida");
+ const data=parseActionInput(req.body);
+ if(!data)return error(res,400,"Verifique tipo, título, preço, regras, quantidade, limites, URLs HTTPS e datas.");
+ try{
+  const q=await pool.query(
+   "update action_catalog set category=$2,title=$3,description=$4,image_url=$5,number_count=$6,price_cents=$7,prize_details=$8,rules_text=$9,regulation_url=$10,max_numbers_per_person=$11,starts_at=$12,ends_at=$13,updated_at=now() where id=$1 returning "+actionFields,
+   [req.params.id,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt]);
+  if(!q.rowCount)return error(res,404,"Ação não encontrada");
+  res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
 });
 app.post("/api/admin/actions/:id/state",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
