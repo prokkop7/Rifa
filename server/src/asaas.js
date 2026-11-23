@@ -68,17 +68,17 @@ export async function createSandboxPixPayment({customer,externalReference,apiKey
   customer,billingType:"PIX",value:5,dueDate,
   externalReference,description:"AÇÕES — demonstração técnica Pix Sandbox, sem participação em sorteio"
  })},apiKey);
- if(typeof data?.id!=="string"||!/^pay_[a-zA-Z0-9]+$/.test(data.id))throw Error("Asaas returned unexpected payment id");
+ if(typeof data?.id!=="string"||!/^pay_[a-zA-Z0-9_]{4,100}$/.test(data.id))throw Error("Asaas returned unexpected payment id");
  return {paymentId:data.id,status:data.status};
 }
 export async function getSandboxPixQr(paymentId,apiKey){
- if(!/^pay_[a-zA-Z0-9]+$/.test(paymentId))throw Error("Invalid payment id");
+ if(!/^pay_[a-zA-Z0-9_]{4,100}$/.test(paymentId))throw Error("Invalid payment id");
  const data=await request("/payments/"+encodeURIComponent(paymentId)+"/pixQrCode",{},apiKey);
  if(typeof data?.payload!=="string"||data.payload.length>3000||!/^[A-Za-z0-9+/=]+$/.test(data?.encodedImage||"")||data.encodedImage.length>300000)throw Error("Asaas returned invalid Pix QR data");
  return {payload:data.payload,encodedImage:data.encodedImage,expirationDate:data.expirationDate||null};
 }
 export async function getSandboxPixPayment(paymentId,apiKey){
- if(!/^pay_[a-zA-Z0-9]+$/.test(paymentId))throw Error("Invalid payment id");
+ if(!/^pay_[a-zA-Z0-9_]{4,100}$/.test(paymentId))throw Error("Invalid payment id");
  const data=await request("/payments/"+encodeURIComponent(paymentId),{},apiKey);
  return {status:data.status,id:data.id};
 }
