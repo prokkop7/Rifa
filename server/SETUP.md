@@ -79,3 +79,12 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - O workflow envia **somente `docs/`**. Não inclui `admin.html`, API, banco de dados ou segredos.
 - Fluxo de verificações: `.github/workflows/check.yml`; instala dependências, verifica sintaxe do backend, inicia um PostgreSQL temporário, aplica `schema.sql` e verifica `/api/health`.
 - O teste automatizado precisa executar e ficar verde para confirmar que o código inicializa. Ele **não** substitui testes de segurança, concorrência, autenticação, LGPD ou produção.
+
+
+## Layout principal para a comunidade brasileira em Londres
+- `docs/index.html` agora oferece espaços para fotos em `docs/images/dell.jpg` e `docs/images/hp.jpg`, grade de 100 números, preço ilustrativo em BRL, resumo e simulação de bloqueio por 3 minutos.
+- O contador do site está marcado como **simulação local**; ele não chama `POST /api/campaigns/:id/reservations`. Não confundir com reservas reais.
+- O botão **Pagar** permanece desabilitado até confirmação de elegibilidade jurídica e habilitação de provedor financeiro apropriado.
+- Para adicionar fotos reais, envie arquivos JPEG para os dois caminhos acima (em GitHub > Add file > Upload files). Não usar imagens de outros modelos como se fossem fotos dos prêmios.
+- O backend tem `database/002_reservations.sql` com reservas de três minutos para campanhas gratuitas autorizadas; a migração precisa ser aplicada no PostgreSQL. O frontend público ainda não consome essa API.
+- Para operação real, integrar sessão autenticada, consulta de reservas, expiração e confirmação transacional; criar testes de concorrência e proteção contra reservas abusivas.
