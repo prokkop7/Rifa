@@ -234,6 +234,27 @@ app.put("/api/admin/checkout-mode",requireSecureAdminSetup,sessionAdmin,async(re
   res.json({mode,rayaEndpoint:endpoint,destinationPhone:destination,tokenConfigured:!!encrypted});
  }catch(e){next(e)}
 });
+const rayaTestLimiter=rateLimit({windowMs:15*60*1000,limit:3,standardHeaders:"draft-7",legacyHeaders:false});
+app.post("/api/admin/checkout-mode/test",requireSecureAdminSetup,sessionAdmin,rayaTestLimiter,async(req,res,next)=>{
+ try{
+  const settings=await actionCheckoutConfig();
+  if(!settings.token_ciphertext)return error(res,409,"Configure primeiro o Bearer token da Raya");
+  const token=unseal(settings.token_ciphertext)?.token;
+  if(typeof token!=="string"||token.length<16)return error(res,503,"Credencial Raya inválida");
+  const testId=randomUUID();
+  const response=await fetch(settings.raya_endpoint,{
+   method:"POST",
+   headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json","Accept":"application/json"},
+   body:JSON.stringify({
+    number:settings.destination_phone,
+    body:"*AÇÕES — TESTE DE INTEGRAÇÃO RAYA*\n\nMensagem de teste enviada a partir do painel administrativo.\nNenhuma reserva ou cobrança foi criada.\n\nID do teste: "+testId,
+    externalKey:"acoes-test-"+testId,isClosed:false
+   }),signal:AbortSignal.timeout(11000)
+  });
+  if(!response.ok)return error(res,502,"Raya recusou a mensagem de teste (HTTP "+response.status+")");
+  res.json({accepted:true,message:"A solicitação de envio foi aceita pela Raya. Confira o WhatsApp de destino."});
+ }catch(e){console.error("Raya test failed",e.status||e.message);next(e)}
+});
 const manualRequestLimiter=rateLimit({windowMs:15*60*1000,limit:6,standardHeaders:"draft-7",legacyHeaders:false});
 app.post("/api/actions/:slug/manual-requests",manualRequestLimiter,async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
