@@ -49,6 +49,9 @@ jobs:
       - name: Check Asaas sandbox adapter (mocked, no real charge)
         working-directory: server
         run: node test/asaas.mjs
+      - name: Test encrypted Asaas settings
+        working-directory: server
+        run: node test/asaas-settings.mjs
       - name: Initialize SQL and check API health
         working-directory: server
         run: node test/smoke.mjs
