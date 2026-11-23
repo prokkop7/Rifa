@@ -1,0 +1,39 @@
+# UK market configuration — London / England
+
+This project is being adapted for UK commercial prize draws and prize competitions.
+
+## Initial scope
+- Interface: en-GB
+- Currency: GBP
+- Time zone: Europe/London, daylight saving time aware
+- Phone: UK (+44) with international numbers supported where terms permit
+- Geographic eligibility: England initially; do not assume identical rules across the entire UK
+- Units/pricing: final paid entry price **not yet determined**
+- Competition: two used laptops (Dell Core i5 4th gen, 4GB, 240GB SSD; HP Core i3 7th gen, 8GB, 240GB SSD)
+- Proposed interface: public prize gallery; numbers grid; distinct free and paid entry routes; registration and login; 3-minute temporary reservation; status and transaction history
+- The previous Brazil-only telephone validator and BRL assumptions are not suitable for the UK launch.
+
+## Compliance controls required before paid launch
+- Determine and document whether the campaign is a qualifying free draw with an equal-access genuine free route or a genuine skill-based prize competition.
+- Free-entry route must satisfy Gambling Commission guidance and consumer/advertising law. Implement entry parity, closing dates, clear rules, draw audit, winner publication/privacy and age safeguards. A free option must not be illusory.
+- Treat any unqualified payment-plus-chance offering as an unauthorized lottery; do not activate paid entry for it.
+- Comply with UK GDPR and Data Protection Act 2018, UK consumer protection and ASA/CAP advertising code.
+- Assess the 2025 voluntary code for prize draw operators and recommended controls.
+- Obtain UK legal review and acquiring provider approval, including classification of the activity.
+- Asaas is a Brazil-focused service; do not assume it supports UK merchant acquisition or this category. Select a payment provider which explicitly approves UK prize draws.
+
+## Proposed payment lifecycle (for approved paid entry campaigns only)
+1. Lock chosen numbers for 3 minutes using server-side UTC expiry.
+2. Create checkout with unique order ID and approved payment provider.
+3. Verify signed webhook server-side and provider status; mark paid atomically and convert reserved numbers to confirmed entries.
+4. If payment is not completed before expiry, release held numbers. For late settlement, **do not allocate already released numbers**; enter manual reconciliation/refund process consistent with the published terms.
+5. Free-entry route goes through separate validated workflow with equal treatment and auditable allocation. No forced purchase.
+6. Prevent duplicate webhook processing and implement idempotent payment/order mapping.
+
+## References
+- https://www.gamblingcommission.gov.uk/public-and-players/guide/page/free-draws-and-prize-competitions
+- https://www.gov.uk/government/publications/voluntary-code-of-good-practice-for-prize-draw-operators/voluntary-code-of-good-practice-for-prize-draw-operators
+- https://www.asa.org.uk/advice-online/promotional-marketing-free-entry-routes.html
+
+## Status
+This file documents requirements; UK payment processing and compliance checks are **not implemented**.
