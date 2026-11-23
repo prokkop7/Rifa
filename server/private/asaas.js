@@ -100,35 +100,94 @@ $("#pixRefresh").addEventListener("click",pollPix);
 
 const PUBLIC_ACTION_URL="https://prokkop7.github.io/Rifa/?acao=";
 const actionList=$("#actionList");
+let editingAction=null;
 function actionMessage(msg,good=false){$("#actionMessage").textContent=msg;$("#actionMessage").className=good?"good":"error"}
+const displayBRL=cents=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+async function GenCopy(value){try{await navigator.clipboard.writeText(value);actionMessage("Link copiado.",true)}catch{actionMessage("Não foi possível copiar o link.")}}
+function toLocalDateTime(value){
+ if(!value)return "";
+ const d=new Date(value);
+ const fmt=n=>String(n).padStart(2,"0");
+ return d.getFullYear()+"-"+fmt(d.getMonth()+1)+"-"+fmt(d.getDate())+"T"+fmt(d.getHours())+":"+fmt(d.getMinutes());
+}
+function resetActionForm(){
+ editingAction=null;$("#actionForm").reset();
+ $("#actionCount").value="100";$("#actionMax").value="10";$("#actionPrice").value="0.00";
+ $("#actionSave").textContent="Criar ação e gerar link";$("#actionCancelEdit").hidden=true;
+}
+function editAction(a){
+ editingAction=a.id;
+ const fields={
+  actionType:a.category,actionTitle:a.title,actionDescription:a.description,
+  actionCount:a.number_count,actionImage:a.image_url||"",
+  actionPrice:(a.price_cents/100).toFixed(2),actionMax:a.max_numbers_per_person,
+  actionPrize:a.prize_details||"",actionRules:a.rules_text||"",
+  actionRegulation:a.regulation_url||"",
+  actionStart:toLocalDateTime(a.starts_at),actionEnd:toLocalDateTime(a.ends_at)
+ };
+ for(const [id,value]of Object.entries(fields))$("#"+id).value=value;
+ $("#actionSave").textContent="Salvar alterações";$("#actionCancelEdit").hidden=false;
+ actionMessage("Editando: "+a.title,true);
+ $("#actionForm").scrollIntoView({behavior:"smooth",block:"start"});
+}
 function actionRow(a){
  const row=document.createElement("div");row.className="action-row";
  const left=document.createElement("div");left.className="action-row-text";
  const name=document.createElement("strong");name.textContent=a.title;
- const meta=document.createElement("small");meta.textContent=({product:"Produto",money:"Dinheiro",service:"Serviço"})[a.category]+" · "+a.number_count+" números · "+(a.state==="preview"?"Prévia disponível":"Arquivada");
+ const meta=document.createElement("small");
+ meta.textContent=({product:"Produto",money:"Dinheiro",service:"Serviço"})[a.category]+
+ " · "+a.number_count+" números · "+displayBRL(a.price_cents)+" por número (prévia) · "+
+ (a.state==="preview"?"Prévia disponível":"Arquivada");
  left.append(name,meta);
  const buttons=document.createElement("div");buttons.className="action-buttons";
  const copy=document.createElement("button");copy.type="button";copy.className="outline";copy.textContent="Copiar link";
  copy.addEventListener("click",()=>GenCopy(PUBLIC_ACTION_URL+encodeURIComponent(a.slug)));
  const open=document.createElement("button");open.type="button";open.className="outline";open.textContent="Abrir";
  open.addEventListener("click",()=>window.open(PUBLIC_ACTION_URL+encodeURIComponent(a.slug),"_blank","noopener,noreferrer"));
- const toggle=document.createElement("button");toggle.type="button";toggle.className="outline";toggle.textContent=a.state==="preview"?"Arquivar":"Reativar prévia";
- toggle.addEventListener("click",async()=>{toggle.disabled=true;try{await call("POST","/api/admin/actions/"+encodeURIComponent(a.id)+"/state",{state:a.state==="preview"?"archived":"preview"});await loadActions()}catch(e){actionMessage(e.message)}finally{toggle.disabled=false}});
- buttons.append(copy,open,toggle);row.append(left,buttons);return row;
+ const edit=document.createElement("button");edit.type="button";edit.className="outline";edit.textContent="Editar";
+ edit.addEventListener("click",()=>editAction(a));
+ const toggle=document.createElement("button");toggle.type="button";toggle.className="outline";
+ toggle.textContent=a.state==="preview"?"Arquivar":"Reativar prévia";
+ toggle.addEventListener("click",async()=>{
+  toggle.disabled=true;
+  try{await call("POST","/api/admin/actions/"+encodeURIComponent(a.id)+"/state",{state:a.state==="preview"?"archived":"preview"});await loadActions()}
+  catch(e){actionMessage(e.message)}finally{toggle.disabled=false}
+ });
+ buttons.append(copy,open,edit,toggle);row.append(left,buttons);return row;
 }
-async function GenCopy(value){try{await navigator.clipboard.writeText(value);actionMessage("Link copiado.",true)}catch{actionMessage("Não foi possível copiar o link.")}}
 async function loadActions(){
- try{const r=await call("GET","/api/admin/actions");actionList.replaceChildren();r.actions.forEach(a=>actionList.append(actionRow(a)));if(!r.actions.length)actionMessage("Nenhuma ação cadastrada ainda.",true)}
- catch(e){actionMessage(e.message)}
+ try{
+  const r=await call("GET","/api/admin/actions");
+  actionList.replaceChildren();
+  r.actions.forEach(a=>actionList.append(actionRow(a)));
+  if(!r.actions.length)actionMessage("Nenhuma ação cadastrada ainda.",true);
+ }catch(e){actionMessage(e.message)}
+}
+function actionInput(){
+ const amount=Number($("#actionPrice").value);
+ if(!Number.isFinite(amount)||amount<0||Math.abs(Math.round(amount*100)-amount*100)>0.00001)throw Error("O valor deve conter no máximo duas casas decimais.");
+ const toIso=id=>$("#"+id).value?new Date($("#"+id).value).toISOString():null;
+ return {
+  category:$("#actionType").value,title:$("#actionTitle").value,
+  description:$("#actionDescription").value,
+  numberCount:Number($("#actionCount").value),
+  imageUrl:$("#actionImage").value,
+  priceCents:Math.round(amount*100),maxPerPerson:Number($("#actionMax").value),
+  prizeDetails:$("#actionPrize").value,rulesText:$("#actionRules").value,
+  regulationUrl:$("#actionRegulation").value,
+  startsAt:toIso("actionStart"),endsAt:toIso("actionEnd")
+ };
 }
 $("#actionForm").addEventListener("submit",async e=>{
- e.preventDefault();const submit=$("#actionForm button[type=submit]");submit.disabled=true;
+ e.preventDefault();const submit=$("#actionSave");submit.disabled=true;
  try{
-  const r=await call("POST","/api/admin/actions",{category:$("#actionType").value,title:$("#actionTitle").value,description:$("#actionDescription").value,numberCount:Number($("#actionCount").value),imageUrl:$("#actionImage").value});
-  $("#actionTitle").value="";$("#actionDescription").value="";$("#actionImage").value="";
-  actionMessage("Ação criada. Link da prévia: "+PUBLIC_ACTION_URL+r.action.slug,true);await loadActions();
+  const editing=Boolean(editingAction);
+  const r=await call(editing?"PUT":"POST",editing?"/api/admin/actions/"+encodeURIComponent(editingAction):"/api/admin/actions",actionInput());
+  resetActionForm();await loadActions();
+  actionMessage(editing?"Alterações salvas. Link mantido.":"Ação criada. Prévia: "+PUBLIC_ACTION_URL+r.action.slug,true);
  }catch(err){actionMessage(err.message)}finally{submit.disabled=false}
 });
+$("#actionCancelEdit").addEventListener("click",()=>{resetActionForm();actionMessage("Edição cancelada.",true)});
 $("#actionReload").addEventListener("click",loadActions);
 
 refreshTabs();checkSession();
