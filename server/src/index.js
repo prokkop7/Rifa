@@ -4,7 +4,7 @@ import pg from "pg";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import {timingSafeEqual,randomBytes,createHash,scrypt as scryptCallback} from "node:crypto";
+import {timingSafeEqual,randomBytes,createHash,randomUUID,scrypt as scryptCallback} from "node:crypto";
 import {promisify} from "node:util";
 const scrypt=promisify(scryptCallback);
 
@@ -108,6 +108,65 @@ await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,
 await client.query("COMMIT");res.status(201).json({participantId:participantId,numbers,paymentRequired:false});
 }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
 });
+
+/* Timed holds are exclusively for authorized FREE entries. No payment linkage. */
+app.get("/api/campaigns/:id/availability",async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"ID inválido");
+ try{
+  const camp=await pool.query("select number_count from campaigns where id=$1 and status='published'",[req.params.id]);
+  if(!camp.rowCount)return error(res,404,"Campanha indisponível");
+  const [confirmed,held]=await Promise.all([
+   pool.query("select number from entries where campaign_id=$1",[req.params.id]),
+   pool.query("select number,expires_at from number_reservations where campaign_id=$1 and expires_at>now()",[req.params.id])
+  ]);
+  res.json({total:camp.rows[0].number_count,confirmed:confirmed.rows.map(x=>x.number),reserved:held.rows.map(x=>({number:x.number,expiresAt:x.expires_at}))});
+ }catch(e){next(e)}
+});
+app.post("/api/campaigns/:id/reservations",requireParticipant,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"ID inválido");
+ const numbers=req.body?.numbers;
+ if(!Array.isArray(numbers)||numbers.length<1||numbers.length>10||!numbers.every(Number.isInteger)||new Set(numbers).size!==numbers.length)return error(res,400,"Escolha de 1 a 10 números diferentes");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const c=await client.query("select number_count from campaigns where id=$1 and status='published' and kind in ('authorized_free_promotion','authorized_osc') and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) for share",[req.params.id]);
+  if(!c.rowCount||numbers.some(n=>n<1||n>c.rows[0].number_count)){await client.query("ROLLBACK");return error(res,409,"Campanha ou números indisponíveis")}
+  const person=req.participant.participant_id;
+  // Reap old expired holds, but do not alter any active holds.
+  await client.query("delete from number_reservations where campaign_id=$1 and expires_at<=now()",[req.params.id]);
+  const already=await client.query("select number from entries where campaign_id=$1 and number=any($2::int[])",[req.params.id,numbers]);
+  if(already.rowCount){await client.query("ROLLBACK");return error(res,409,"Um dos números já foi confirmado")}
+  const group=randomUUID();
+  const expiresAt=new Date(Date.now()+180000);
+  for(const number of numbers){
+   const r=await client.query("insert into number_reservations(campaign_id,participant_id,number,reservation_group,expires_at) values($1,$2,$3,$4,$5) on conflict(campaign_id,number) do nothing returning id",[req.params.id,person,number,group,expiresAt]);
+   if(!r.rowCount){await client.query("ROLLBACK");return error(res,409,"Número reservado por outra pessoa")}
+  }
+  await client.query("COMMIT");
+  res.status(201).json({reservationId:group,numbers,expiresAt:expiresAt.toISOString(),paymentRequired:false});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
+});
+app.post("/api/campaigns/:id/reservations/:group/confirm",requireParticipant,async(req,res,next)=>{
+ if(!uuid(req.params.id)||!uuid(req.params.group))return error(res,400,"ID inválido");
+ if(req.body?.acceptedRegulation!==true)return error(res,400,"Aceite do regulamento obrigatório");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const c=await client.query("select id from campaigns where id=$1 and status='published' and kind in ('authorized_free_promotion','authorized_osc') and (ends_at is null or ends_at>=now()) for share",[req.params.id]);
+  if(!c.rowCount){await client.query("ROLLBACK");return error(res,409,"Campanha encerrada")}
+  const holds=await client.query("select id,number,expires_at from number_reservations where campaign_id=$1 and participant_id=$2 and reservation_group=$3 order by number for update",[req.params.id,req.participant.participant_id,req.params.group]);
+  if(!holds.rowCount||holds.rows.some(x=>new Date(x.expires_at).getTime()<=Date.now())){await client.query("ROLLBACK");return error(res,409,"Reserva expirada")}
+  for(const hold of holds.rows){
+   const r=await client.query("insert into entries(campaign_id,participant_id,number) values($1,$2,$3) on conflict do nothing returning id",[req.params.id,req.participant.participant_id,hold.number]);
+   if(!r.rowCount){await client.query("ROLLBACK");return error(res,409,"Número indisponível")}
+  }
+  await client.query("delete from number_reservations where reservation_group=$1 and participant_id=$2",[req.params.group,req.participant.participant_id]);
+  await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,details) values($1,$2,$3,$4,$5)",[req.participant.participant_id,"entries.confirmed_free","campaign",req.params.id,JSON.stringify({reservationId:req.params.group,numbers:holds.rows.map(x=>x.number)})]);
+  await client.query("COMMIT");
+  res.status(201).json({confirmed:true,numbers:holds.rows.map(x=>x.number),paymentRequired:false});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
+});
+
 app.post("/api/admin/organizers",auth,async(req,res,next)=>{
 const {ownerUserId,displayName}=req.body||{};
 if(!uuid(ownerUserId)||typeof displayName!=="string"||displayName.trim().length<3||displayName.length>120)return error(res,400,"Dados inválidos");
