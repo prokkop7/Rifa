@@ -100,6 +100,75 @@ app.get("/api/actions/:slug",async(req,res,next)=>{
   res.set("Cache-Control","public, max-age=45");res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
 });
+// Temporary number holds for catalog previews. No charge, sale, or confirmed entry.
+app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
+ if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
+ try{
+  const a=await pool.query("select id,number_count,max_numbers_per_person from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
+  if(!a.rowCount)return error(res,404,"Ação não encontrada");
+  const action=a.rows[0];
+  const [holds,confirmed]=await Promise.all([
+   pool.query("select number,expires_at from action_number_holds where action_id=$1 and expires_at>now()",[action.id]),
+   pool.query("select number from action_number_confirmations where action_id=$1",[action.id])
+  ]);
+  res.set("Cache-Control","no-store");
+  res.json({total:action.number_count,maxPerPerson:action.max_numbers_per_person,
+   reserved:holds.rows.map(x=>({number:x.number,expiresAt:x.expires_at})),
+   confirmed:confirmed.rows.map(x=>x.number),purchasesEnabled:false,confirmationEnabled:false});
+ }catch(e){next(e)}
+});
+app.get("/api/me/action-holds",requireParticipant,async(req,res,next)=>{
+ try{
+  const r=await pool.query("select a.slug,a.title,h.number,h.reservation_group,h.expires_at from action_number_holds h join action_catalog a on a.id=h.action_id where h.participant_id=$1 and h.expires_at>now() order by h.expires_at asc,h.number asc limit 200",[req.participant.participant_id]);
+  res.set("Cache-Control","no-store");res.json({holds:r.rows,purchasesEnabled:false});
+ }catch(e){next(e)}
+});
+const previewHoldLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:"draft-7",legacyHeaders:false});
+app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(req,res,next)=>{
+ if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
+ const numbers=req.body?.numbers;
+ if(!Array.isArray(numbers)||!numbers.length||numbers.length>20||!numbers.every(Number.isInteger)||new Set(numbers).size!==numbers.length)
+  return error(res,400,"Escolha entre 1 e 20 números distintos");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const a=await client.query("select id,number_count,max_numbers_per_person from action_catalog where slug=$1 and state='preview' for update",[req.params.slug]);
+  if(!a.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
+  const action=a.rows[0],pid=req.participant.participant_id;
+  if(numbers.some(n=>n<1||n>action.number_count)||numbers.length>action.max_numbers_per_person){
+   await client.query("ROLLBACK");return error(res,400,"Número fora do intervalo ou limite individual excedido");
+  }
+  // All competing holds on this action serialize on the action row.
+  await client.query("delete from action_number_holds where action_id=$1 and expires_at<=now()",[action.id]);
+  const existing=await client.query("select number from action_number_holds where action_id=$1 and participant_id=$2",[action.id,pid]);
+  const ownerNumbers=new Set(existing.rows.map(r=>r.number));
+  if(new Set([...ownerNumbers,...numbers]).size>action.max_numbers_per_person){
+   await client.query("ROLLBACK");return error(res,409,"Limite por participante atingido; libere a seleção anterior");
+  }
+  const occupied=await client.query("select number from action_number_holds where action_id=$1 and number=any($2::int[]) union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
+  if(occupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Um ou mais números já estão reservados ou confirmados")}
+  const group=randomUUID(),expiresAt=new Date(Date.now()+180000);
+  for(const number of numbers){
+   await client.query("insert into action_number_holds(action_id,participant_id,number,reservation_group,expires_at) values($1,$2,$3,$4,$5)",[action.id,pid,number,group,expiresAt]);
+  }
+  await client.query("COMMIT");
+  res.set("Cache-Control","no-store");
+  res.status(201).json({reservationId:group,numbers,expiresAt:expiresAt.toISOString(),paymentRequired:false,
+   temporarySelection:true,confirmationEnabled:false});
+ }catch(e){
+  await client.query("ROLLBACK").catch(()=>{});
+  if(e.code==="23505")return error(res,409,"Número reservado por outro participante");
+  next(e);
+ }finally{client.release()}
+});
+app.delete("/api/actions/:slug/holds/:group",requireParticipant,async(req,res,next)=>{
+ if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug)||!uuid(req.params.group))return error(res,400,"Seleção inválida");
+ try{
+  const r=await pool.query("delete from action_number_holds h using action_catalog a where h.action_id=a.id and a.slug=$1 and h.participant_id=$2 and h.reservation_group=$3 returning h.number",
+   [req.params.slug,req.participant.participant_id,req.params.group]);
+  res.set("Cache-Control","no-store");res.json({released:r.rows.map(x=>x.number)});
+ }catch(e){next(e)}
+});
 app.get("/api/health",async(req,res)=>{try{await pool.query("select 1");res.json({ok:true})}catch{res.status(503).json({ok:false})}});
 app.get("/api/campaigns",async(req,res,next)=>{try{const r=await pool.query("select id,title,description,kind,number_count,regulation_url from campaigns where status='published' order by created_at desc limit 50");res.json({campaigns:r.rows})}catch(e){next(e)}});
 app.get("/api/campaigns/:id",async(req,res,next)=>{if(!uuid(req.params.id))return error(res,400,"ID inválido");try{
