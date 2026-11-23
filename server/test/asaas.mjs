@@ -27,7 +27,7 @@ assert.equal(result.checkoutId,"84997b72-a786-43a1-b8d8-9083c6f8b8e2");
 assert.ok(result.checkoutUrl.includes(result.checkoutId));
 assert.equal(verifyAsaasWebhookToken(process.env.ASAAS_WEBHOOK_TOKEN),true);
 assert.equal(verifyAsaasWebhookToken("invalid"),false);
-assert.rejects(()=>createCommercialCheckout({
+await assert.rejects(()=>createCommercialCheckout({
  externalReference:"5df3077e-8086-4a48-a77d-22710ba04ebd",
  title:"Teste",
  amountCents:100,
