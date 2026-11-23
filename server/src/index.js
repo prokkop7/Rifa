@@ -198,7 +198,7 @@ async function sendManualRequestNotification(orderId){
   return {attempted:true,accepted:false};
  }
 }
-app.get("/api/actions/checkout-mode",async(req,res,next)=>{
+app.get("/api/checkout/mode",async(req,res,next)=>{
  try{
   const config=await actionCheckoutConfig();
   res.set("Cache-Control","no-store");
