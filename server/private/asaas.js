@@ -1,5 +1,6 @@
 "use strict";
 const $=selector=>document.querySelector(selector);
+let currentEnvironment="sandbox",activeEnvironment="sandbox";
 const webhookUrl=location.origin+"/api/webhooks/asaas";
 $("#webhookUrl").textContent=webhookUrl;
 function status(message,good=false){const p=$("#message");p.textContent=message;p.className=good?"good":"error"}
@@ -11,12 +12,13 @@ async function call(method,path,body){
  return result;
 }
 async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck()}catch{signedIn(false)}}
+function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="ATIVO: "+activeEnvironment.toUpperCase();$("#apiKey").value="";$("#webhookToken").value="";}
 async function runCheck(){
  const button=$("#check");button.disabled=true;
  try{
-  const result=await call("GET","/api/admin/asaas/status");
-  $("#connection").textContent=result.connected?"Sandbox conectado":result.configured?"Falha de autenticação":"Não configurado";
-  status(result.connected?"Conexão validada com o Asaas Sandbox.":"Nenhuma conexão ativa foi confirmada.",result.connected);
+  const result=await call("GET","/api/admin/asaas/status?environment="+encodeURIComponent(currentEnvironment));
+  activeEnvironment=result.activeEnvironment||activeEnvironment;refreshTabs();$("#connection").textContent=result.connected?"Sandbox conectado":result.configured?"Falha de autenticação":"Não configurado";
+  status(result.connected?"Conexão validada no ambiente "+currentEnvironment+".":"Nenhuma conexão ativa confirmada no ambiente "+currentEnvironment+".",result.connected);
  }catch(e){status(e.message)}finally{button.disabled=false}
 }
 $("#loginForm").addEventListener("submit",async e=>{
@@ -38,7 +40,7 @@ $("#configForm").addEventListener("submit",async e=>{
  if(webhookToken.length<32||webhookToken.length>255||/\s/.test(webhookToken))return status("Token de webhook inválido.");
  const submit=$("#configForm button[type=submit]");submit.disabled=true;
  try{
-  const result=await call("POST","/api/admin/asaas/config",{apiKey,webhookToken});
+  const result=await call("POST","/api/admin/asaas/config",{apiKey,webhookToken,environment:currentEnvironment});
   $("#connection").textContent=result.connected?"Sandbox conectado":"Conexão pendente";
   $("#apiKey").value="";$("#webhookToken").value="";
   status("Credenciais validadas e salvas com criptografia no servidor.",true);
@@ -46,8 +48,10 @@ $("#configForm").addEventListener("submit",async e=>{
 });
 $("#check").addEventListener("click",runCheck);
 $("#remove").addEventListener("click",async()=>{
- if(!confirm("Desconectar o Asaas Sandbox desta instalação?"))return;
- try{await call("DELETE","/api/admin/asaas/config");$("#connection").textContent="Não configurado";status("Credenciais removidas.",true)}catch(e){status(e.message)}
+ if(!confirm("Desconectar credenciais de "+currentEnvironment+"?"))return;
+ try{await call("DELETE","/api/admin/asaas/config?environment="+encodeURIComponent(currentEnvironment));$("#connection").textContent="Não configurado";status("Credenciais de "+currentEnvironment+" removidas.",true)}catch(e){status(e.message)}
 });
 $("#copyUrl").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(webhookUrl);status("Endereço copiado.",true)}catch{status("Copie o endereço exibido acima.")}});
-checkSession();
+document.querySelectorAll("[data-environment]").forEach(btn=>btn.addEventListener("click",async()=>{currentEnvironment=btn.dataset.environment;refreshTabs();if(!$("#secureSettings").hidden)await runCheck()}));
+$("#setActive").addEventListener("click",async()=>{try{if(!confirm("Selecionar "+currentEnvironment+" como ambiente preferido? Isso NÃO ativa cobranças reais."))return;const r=await call("POST","/api/admin/asaas/active-environment",{environment:currentEnvironment});activeEnvironment=r.activeEnvironment;refreshTabs();status("Preferência salva: "+activeEnvironment+". Cobranças reais permanecem desativadas.",true)}catch(e){status(e.message)}});
+refreshTabs();checkSession();
