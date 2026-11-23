@@ -15,3 +15,10 @@ textarea{width:100%;resize:vertical}.primary{background:#238d82;color:#fff}.outl
 .pix-result{margin-top:18px;padding:17px;border:1px solid #d7e9e5;border-radius:16px;background:#f5fbf8}
 #pixQr{display:block;max-width:100%;height:auto;margin:10px auto 18px;border:10px solid white;border-radius:12px;box-shadow:0 4px 20px #234e5114}
 #pixMessage{font-size:13px;min-height:19px}code{font-size:11px;overflow-wrap:anywhere}
+
+select{width:100%;border:1px solid #cedfe5;background:#fff;color:#294657;border-radius:10px;padding:13px;font:inherit;font-size:14px}
+.action-list{display:grid;gap:10px;margin-top:16px}
+.action-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:center;border:1px solid #d6e8e5;border-radius:13px;padding:12px;background:#f8fcfb}
+.action-row-text{min-width:0;display:grid;gap:4px;flex:1 1 170px;color:#294d57}
+.action-row-text small{color:#708b91;line-height:1.4}
+.action-buttons{display:flex;flex-wrap:wrap;gap:5px}.action-buttons button{font-size:11px;min-height:36px;padding:8px 10px}
