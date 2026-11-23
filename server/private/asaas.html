@@ -35,6 +35,21 @@
 </div>
 <p id="pixMessage" aria-live="polite" role="status"></p>
 </section>
+<section class="panel compact" data-auth-only hidden id="actionsAdminPanel">
+<h2>Cadastrar nova ação</h2>
+<p class="sub">Crie um link individual para divulgar ações de Produto, Dinheiro ou Serviço. Os números e a compra permanecem em preparação até a regularização e habilitação da modalidade.</p>
+<form id="actionForm" autocomplete="off">
+<label for="actionType">Tipo de ação</label>
+<select id="actionType" required><option value="product">Produto</option><option value="money">Dinheiro</option><option value="service">Serviço</option></select>
+<label for="actionTitle">Título da ação</label><input id="actionTitle" required minlength="4" maxlength="110" placeholder="Ex.: Notebook Dell">
+<label for="actionDescription">Descrição e condições do prêmio</label><textarea id="actionDescription" rows="3" maxlength="3000" placeholder="Detalhes, condições e entrega"></textarea>
+<label for="actionCount">Quantidade de números para apresentação</label><input id="actionCount" type="number" min="1" max="10000" value="100" required>
+<label for="actionImage">Link HTTPS da imagem (opcional)</label><input id="actionImage" type="url" placeholder="https://..." maxlength="1200">
+<div class="actions"><button class="primary" type="submit">Criar ação e gerar link</button><button type="button" id="actionReload" class="outline">Atualizar ações</button></div>
+</form>
+<p id="actionMessage" role="status" aria-live="polite"></p>
+<div id="actionList" class="action-list" aria-live="polite"></div>
+</section>
 <section class="panel compact" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure esta URL na conta correspondente ao ambiente quando os webhooks estiverem habilitados. No momento, o webhook operacional continua restrito ao Sandbox.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
 <section class="panel compact" data-auth-only hidden><h2>Remover conexão</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar ambiente exibido</button></section>
 <footer>Credenciais criptografadas e independentes por ambiente. Produção ainda não recebe cobranças pelo AÇÕES.</footer>
