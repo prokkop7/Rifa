@@ -11,7 +11,7 @@ async function call(method,path,body){
  if(!response.ok){if(response.status===401&&path!=="/api/admin/asaas/login"&&path!=="/api/admin/asaas/session"){signedIn(false);$("#loginForm").scrollIntoView({behavior:"smooth",block:"center"});status("Sua sessão administrativa expirou. Entre novamente para continuar.");}throw Error(response.status===401&&path!=="/api/admin/asaas/login"?"Sessão encerrada. Faça login novamente.":result.error||"Erro HTTP "+response.status)}
  return result;
 }
-async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck()}catch{signedIn(false)}}
+async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions()}catch{signedIn(false)}}
 function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="ATIVO: "+activeEnvironment.toUpperCase();$("#apiKey").value="";$("#webhookToken").value="";}
 async function runCheck(){
  const button=$("#check");button.disabled=true;
@@ -27,7 +27,7 @@ $("#loginForm").addEventListener("submit",async e=>{
  try{
   await call("POST","/api/admin/asaas/login",{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value});
   $("#loginPassword").value="";
-  signedIn(true);status("Acesso administrativo autorizado.",true);await runCheck();
+  signedIn(true);status("Acesso administrativo autorizado.",true);await runCheck();await loadActions();
  }catch(e){status(e.message)}finally{submit.disabled=false}
 });
 $("#logout").addEventListener("click",async()=>{
@@ -86,5 +86,38 @@ $("#pixCopy").addEventListener("click",async()=>{
  catch{pixNotice("Não foi possível copiar. Selecione o código acima.")}
 });
 $("#pixRefresh").addEventListener("click",pollPix);
+
+const PUBLIC_ACTION_URL="https://prokkop7.github.io/Rifa/?acao=";
+const actionList=$("#actionList");
+function actionMessage(msg,good=false){$("#actionMessage").textContent=msg;$("#actionMessage").className=good?"good":"error"}
+function actionRow(a){
+ const row=document.createElement("div");row.className="action-row";
+ const left=document.createElement("div");left.className="action-row-text";
+ const name=document.createElement("strong");name.textContent=a.title;
+ const meta=document.createElement("small");meta.textContent=({product:"Produto",money:"Dinheiro",service:"Serviço"})[a.category]+" · "+a.number_count+" números · "+(a.state==="preview"?"Prévia disponível":"Arquivada");
+ left.append(name,meta);
+ const buttons=document.createElement("div");buttons.className="action-buttons";
+ const copy=document.createElement("button");copy.type="button";copy.className="outline";copy.textContent="Copiar link";
+ copy.addEventListener("click",()=>GenCopy(PUBLIC_ACTION_URL+encodeURIComponent(a.slug)));
+ const open=document.createElement("button");open.type="button";open.className="outline";open.textContent="Abrir";
+ open.addEventListener("click",()=>window.open(PUBLIC_ACTION_URL+encodeURIComponent(a.slug),"_blank","noopener,noreferrer"));
+ const toggle=document.createElement("button");toggle.type="button";toggle.className="outline";toggle.textContent=a.state==="preview"?"Arquivar":"Reativar prévia";
+ toggle.addEventListener("click",async()=>{toggle.disabled=true;try{await call("POST","/api/admin/actions/"+encodeURIComponent(a.id)+"/state",{state:a.state==="preview"?"archived":"preview"});await loadActions()}catch(e){actionMessage(e.message)}finally{toggle.disabled=false}});
+ buttons.append(copy,open,toggle);row.append(left,buttons);return row;
+}
+async function GenCopy(value){try{await navigator.clipboard.writeText(value);actionMessage("Link copiado.",true)}catch{actionMessage("Não foi possível copiar o link.")}}
+async function loadActions(){
+ try{const r=await call("GET","/api/admin/actions");actionList.replaceChildren();r.actions.forEach(a=>actionList.append(actionRow(a)));if(!r.actions.length)actionMessage("Nenhuma ação cadastrada ainda.",true)}
+ catch(e){actionMessage(e.message)}
+}
+$("#actionForm").addEventListener("submit",async e=>{
+ e.preventDefault();const submit=$("#actionForm button[type=submit]");submit.disabled=true;
+ try{
+  const r=await call("POST","/api/admin/actions",{category:$("#actionType").value,title:$("#actionTitle").value,description:$("#actionDescription").value,numberCount:Number($("#actionCount").value),imageUrl:$("#actionImage").value});
+  $("#actionTitle").value="";$("#actionDescription").value="";$("#actionImage").value="";
+  actionMessage("Ação criada. Link da prévia: "+PUBLIC_ACTION_URL+r.action.slug,true);await loadActions();
+ }catch(err){actionMessage(err.message)}finally{submit.disabled=false}
+});
+$("#actionReload").addEventListener("click",loadActions);
 
 refreshTabs();checkSession();
