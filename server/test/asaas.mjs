@@ -21,7 +21,7 @@ const result=await createCommercialCheckout({
 });
 assert.deepEqual(sent.billingTypes,["PIX"]);
 assert.deepEqual(sent.chargeTypes,["DETACHED"]);
-assert.equal(sent.minutesToExpire,10);
+assert.equal(sent.minutesToExpire,60);
 assert.equal(sent.items[0].value,50.9);
 assert.equal(result.checkoutId,"84997b72-a786-43a1-b8d8-9083c6f8b8e2");
 assert.ok(result.checkoutUrl.includes(result.checkoutId));
