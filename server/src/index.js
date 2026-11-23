@@ -85,6 +85,21 @@ app.post("/api/auth/logout",requireParticipant,async(req,res,next)=>{
  try{await pool.query("update participant_sessions set revoked_at=now() where id=$1",[req.participant.session_id]);res.json({loggedOut:true})}catch(err){next(err)}
 });
 
+// Public previews only. Paid-number transactions remain unavailable.
+app.get("/api/actions",async(req,res,next)=>{
+ try{
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,created_at from action_catalog where state='preview' order by created_at desc limit 100");
+  res.set("Cache-Control","public, max-age=45");res.json({actions:q.rows,purchasesEnabled:false});
+ }catch(e){next(e)}
+});
+app.get("/api/actions/:slug",async(req,res,next)=>{
+ if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
+ try{
+  const q=await pool.query("select slug,category,title,description,image_url,number_count from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
+  if(!q.rowCount)return error(res,404,"Ação não encontrada");
+  res.set("Cache-Control","public, max-age=45");res.json({action:q.rows[0],purchasesEnabled:false});
+ }catch(e){next(e)}
+});
 app.get("/api/health",async(req,res)=>{try{await pool.query("select 1");res.json({ok:true})}catch{res.status(503).json({ok:false})}});
 app.get("/api/campaigns",async(req,res,next)=>{try{const r=await pool.query("select id,title,description,kind,number_count,regulation_url from campaigns where status='published' order by created_at desc limit 50");res.json({campaigns:r.rows})}catch(e){next(e)}});
 app.get("/api/campaigns/:id",async(req,res,next)=>{if(!uuid(req.params.id))return error(res,400,"ID inválido");try{
@@ -276,6 +291,34 @@ app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAd
   // Pure administrative selection. It does not change checkout's sandbox-only route.
   if(environment==="production"&&!await getAsaasSettings(pool,"production"))return error(res,409,"Configure a chave de produção antes de selecioná-la");
   res.json(await setActiveAsaasEnvironment(pool,environment));
+ }catch(e){next(e)}
+});
+// Create, list and archive individual shareable action previews.
+app.get("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ try{const q=await pool.query("select id,slug,category,title,description,image_url,number_count,state,created_at from action_catalog order by created_at desc limit 200");res.json({actions:q.rows})}catch(e){next(e)}
+});
+app.post("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ const title=String(req.body?.title||"").trim();
+ const description=String(req.body?.description||"").trim();
+ const category=req.body?.category;
+ const numberCount=Number(req.body?.numberCount);
+ const imageUrl=String(req.body?.imageUrl||"").trim();
+ if(!["product","money","service"].includes(category)||title.length<4||title.length>110||description.length>3000||
+  !Number.isInteger(numberCount)||numberCount<1||numberCount>10000||
+  (imageUrl&&(!/^https:\/\/[a-z0-9.-]+\/\S*$/i.test(imageUrl)||imageUrl.length>1200)))
+  return error(res,400,"Preencha tipo, título, descrição e quantidade válida. Imagem deve usar HTTPS.");
+ try{
+  const slug=title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,56)+"-"+randomBytes(4).toString("hex");
+  const q=await pool.query("insert into action_catalog(slug,category,title,description,image_url,number_count) values($1,$2,$3,$4,$5,$6) returning id,slug,category,title,state",[slug,category,title,description,imageUrl||null,numberCount]);
+  res.status(201).json({action:q.rows[0],purchasesEnabled:false});
+ }catch(e){next(e)}
+});
+app.post("/api/admin/actions/:id/state",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id)||!["preview","archived"].includes(req.body?.state))return error(res,400,"Ação ou estado inválido");
+ try{
+  const q=await pool.query("update action_catalog set state=$2,updated_at=now() where id=$1 returning id,slug,state",[req.params.id,req.body.state]);
+  if(!q.rowCount)return error(res,404,"Ação não encontrada");
+  res.json({action:q.rows[0]});
  }catch(e){next(e)}
 });
 // Administratively gated Sandbox-only QR demonstration, unrelated to raffle entries.
