@@ -19,7 +19,7 @@ const result=await createCommercialCheckout({
  cancelUrl:"https://example.org/cancel",
  expiredUrl:"https://example.org/expired"
 });
-assert.deepEqual(sent.billingTypes,["PIX","CREDIT_CARD"]);
+assert.deepEqual(sent.billingTypes,["PIX"]);
 assert.deepEqual(sent.chargeTypes,["DETACHED"]);
 assert.equal(sent.minutesToExpire,10);
 assert.equal(sent.items[0].value,50.9);
