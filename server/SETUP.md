@@ -132,3 +132,13 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - A página usa chave administrativa global para homologação, não substitui painel multiempresa com login, MFA e permissões por organização.
 - A conexão **não ativa a cobrança pública da rifa**. Nenhuma transação real deve ser vinculada aos números antes do modelo permitido e da aprovação do processador.
 - Em produção, mantenha `ASAAS_SETTINGS_UI_ENABLED=false` até implementar autenticação administrativa individual e controles de segurança.
+
+
+## Duas contas Asaas — Sandbox e Produção (23/11/2026)
+- Painel HTTPS no One: `https://painel-acoes.rayaconnect.com.br/admin/asaas`, login próprio.
+- As abas **Sandbox** e **Produção** possuem chaves API e tokens webhook independentes, criptografados separadamente no PostgreSQL com a mesma chave mestra já existente. Nenhuma credencial é apresentada de volta pelo backend.
+- Os botões **Testar e salvar** validam a chave contra a API do ambiente correspondente: Sandbox `https://api-sandbox.asaas.com/v3`; produção `https://api.asaas.com/v3`. Nenhuma cobrança é criada por essas verificações.
+- O botão **Definir ambiente exibido como ativo** apenas registra a preferência no banco. **Não ativa Pix em produção, não redireciona checkouts e não registra participações da campanha.** O checkout de pedidos comerciais permanece explicitamente Sandbox.
+- Banco existente: executar `database/005_asaas_dual_environment.sql` uma vez, após a migração 004. Uma instalação nova também deve aplicar a migração 005.
+- O webhook de processamento ainda usa exclusivamente o token do Sandbox. Não configure a conta de produção para enviar eventos a esse webhook enquanto não for implementada separação completa dos eventos e conciliação.
+- A possibilidade de ativar cobrança real futuramente depende da validação legal e aprovação Asaas para a atividade; configurar uma conta de produção não equivale a habilitar vendas.
