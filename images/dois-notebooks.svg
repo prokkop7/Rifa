@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-labelledby="title desc">
+<title id="title">Demonstração AÇÕES: dois notebooks, um Dell e um HP</title><desc id="desc">Arte ilustrativa dos dois notebooks da demonstração, sem compromisso de correspondência visual exata aos equipamentos.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0e2e3d"/><stop offset="1" stop-color="#172a45"/></linearGradient><linearGradient id="metal" x2="0" y2="1"><stop stop-color="#e6edf3"/><stop offset=".56" stop-color="#9db3c1"/><stop offset="1" stop-color="#6d8a9a"/></linearGradient><linearGradient id="dell" x2="1" y2="1"><stop stop-color="#163266"/><stop offset="1" stop-color="#41a6c4"/></linearGradient><linearGradient id="hp" x2="1" y2="1"><stop stop-color="#312a5a"/><stop offset="1" stop-color="#8a64d0"/></linearGradient></defs>
+<rect width="1200" height="720" rx="34" fill="url(#bg)"/>
+<circle cx="1020" cy="96" r="260" fill="#4bd7bc" opacity=".1"/><circle cx="85" cy="550" r="190" fill="#82aaf0" opacity=".08"/>
+<text x="60" y="80" font-family="Arial,sans-serif" font-weight="700" font-size="29" letter-spacing="6" fill="#74d4c0">AÇÕES • DEMONSTRAÇÃO</text>
+<text x="60" y="146" font-family="Arial,sans-serif" font-weight="700" font-size="55" fill="#ffffff">DOIS NOTEBOOKS</text>
+<g transform="translate(40 170)">
+<ellipse cx="298" cy="360" rx="257" ry="28" fill="#06151f" opacity=".4"/>
+<rect x="70" y="28" width="440" height="294" rx="16" fill="#b8cbd3" stroke="#688390" stroke-width="6"/>
+<rect x="86" y="43" width="408" height="265" rx="5" fill="url(#dell)"/>
+<circle cx="352" cy="153" r="110" fill="#ffffff" opacity=".05"/><path d="M95 283 332 51l158 180" fill="none" stroke="#a3fff1" stroke-width="28" opacity=".16"/>
+<text x="290" y="202" font-size="74" font-family="Arial,sans-serif" font-weight="700" text-anchor="middle" fill="#fff">DELL</text>
+<path d="M52 325h477l61 43H-8z" fill="url(#metal)" stroke="#6b8491" stroke-width="4"/>
+<path d="M233 349h119l-10 17H241z" fill="#748c99" opacity=".5"/>
+<text x="290" y="425" text-anchor="middle" font-family="Arial,sans-serif" font-size="29" font-weight="700" fill="#fff">Notebook Dell</text>
+<text x="290" y="459" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" fill="#bfdae6">i5 4ª gen • 4 GB • SSD 240 GB</text>
+</g>
+<g transform="translate(605 170)">
+<ellipse cx="298" cy="360" rx="257" ry="28" fill="#06151f" opacity=".4"/>
+<rect x="70" y="28" width="440" height="294" rx="16" fill="#b8cbd3" stroke="#688390" stroke-width="6"/>
+<rect x="86" y="43" width="408" height="265" rx="5" fill="url(#hp)"/>
+<circle cx="365" cy="150" r="115" fill="#d9b0fb" opacity=".1"/><path d="M95 284 323 50l163 180" fill="none" stroke="#f5bcf2" stroke-width="25" opacity=".19"/>
+<text x="290" y="202" font-size="97" font-family="Arial,sans-serif" font-style="italic" font-weight="700" text-anchor="middle" fill="#fff">hp</text>
+<path d="M52 325h477l61 43H-8z" fill="url(#metal)" stroke="#6b8491" stroke-width="4"/>
+<path d="M233 349h119l-10 17H241z" fill="#748c99" opacity=".5"/>
+<text x="290" y="425" text-anchor="middle" font-family="Arial,sans-serif" font-size="29" font-weight="700" fill="#fff">Notebook HP</text>
+<text x="290" y="459" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" fill="#bfdae6">i3 7ª gen • 8 GB • SSD 240 GB</text>
+</g>
+<text x="600" y="685" text-anchor="middle" font-family="Arial,sans-serif" letter-spacing="3" font-size="17" fill="#99bcc6">ILUSTRAÇÕES CONCEITUAIS • NÃO SÃO FOTOGRAFIAS DOS APARELHOS</text>
+</svg>
