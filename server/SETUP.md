@@ -53,3 +53,13 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - A criação de conta requer senha de pelo menos 12 caracteres. Uma implementação de produção deverá adicionar verificação de telefone (OTP), recuperação de senha, proteção adicional contra tentativas de login distribuídas, revisão de privacidade e consentimento e testes.
 - O schema foi alterado. Docker inicializa `database/schema.sql` somente em um banco **novo**; bancos existentes precisam aplicar somente as instruções adicionais de migração, sem recriar tabelas nem apagar dados.
 - Não envie o identificador de participante como prova de identidade; todas as consultas privadas exigem sessão.
+
+
+## Painel administrativo de homologação — etapa 6
+- A nova página `admin.html` consulta relatórios e gerencia rascunhos e prêmios.
+- Rotas: `GET /api/admin/overview`, `GET /api/admin/organizers`, `GET /api/admin/campaigns`, `GET /api/admin/campaigns/:id/entries`, `POST /api/admin/campaigns/:id/prizes`.
+- A interface de homologação pede a chave `ADMIN_API_KEY` em memória. **Não publique essa página**, não use a chave de produção nela e não compartilhe a chave. O painel definitivo precisa de autenticação administrativa individual e autorização por organizador (tenant).
+- `POST /api/admin/organizers` continua disponível apenas via cliente administrativo de servidor, para inicialização de organizadores.
+- Um prêmio só pode ser adicionado a campanha em `draft`. Não existe função de publicação/sorteio/cobrança nesta etapa.
+- O SQL de instalação nova foi corrigido para remover bloco duplicado e restaurar a validação do telefone. Bancos já existentes precisam de migrações específicas; não recrie tabelas.
+- **Código escrito e conferido no GitHub; execução contra PostgreSQL e testes de integração ainda não realizados.**
