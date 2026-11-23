@@ -89,25 +89,8 @@ const p=await pool.query("select id,label,specs,image_url,position from prizes w
 app.get("/api/campaigns/:id/numbers",async(req,res,next)=>{if(!uuid(req.params.id))return error(res,400,"ID inválido");try{
 const c=await pool.query("select number_count from campaigns where id=$1 and status='published'",[req.params.id]);if(!c.rowCount)return error(res,404,"Campanha indisponível");
 const r=await pool.query("select number from entries where campaign_id=$1 order by number",[req.params.id]);res.json({total:c.rows[0].number_count,occupied:r.rows.map(x=>x.number)})}catch(e){next(e)}});
-app.post("/api/campaigns/:id/entries",requireParticipant,rateLimit({windowMs:3600000,limit:8,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res,next)=>{
-if(!uuid(req.params.id))return error(res,400,"ID inválido");
-const {socialNetwork,socialHandle,numbers,acceptedRegulation}=req.body||{};
-if(!Array.isArray(numbers)||numbers.length<1||numbers.length>10||!numbers.every(Number.isInteger)||new Set(numbers).size!==numbers.length)return error(res,400,"Selecione de 1 a 10 números distintos");
-if(acceptedRegulation!==true)return error(res,400,"Aceite do regulamento obrigatório");
-if(String(socialNetwork||"").length>40||String(socialHandle||"").length>80)return error(res,400,"Rede social inválida");
-const client=await pool.connect();
-try{
-await client.query("BEGIN");
-const c=await client.query("select number_count from campaigns where id=$1 and status='published' and kind in ('authorized_free_promotion','authorized_osc') and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) for share",[req.params.id]);
-if(!c.rowCount){await client.query("ROLLBACK");return error(res,409,"Campanha não habilitada para inscrição")}
-if(numbers.some(n=>n<1||n>c.rows[0].number_count)){await client.query("ROLLBACK");return error(res,400,"Número inválido")}
-const participantId=req.participant.participant_id;
-await client.query("update participants set social_network=$2,social_handle=$3 where id=$1",[participantId,String(socialNetwork||"").trim()||null,String(socialHandle||"").trim()||null]);
-for(const n of numbers){const r=await client.query("insert into entries(campaign_id,participant_id,number) values($1,$2,$3) on conflict do nothing returning id",[req.params.id,participantId,n]);if(!r.rowCount){await client.query("ROLLBACK");return error(res,409,"Número indisponível. Atualize a grade.")}}
-await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,details) values($1,$2,$3,$4,$5)",[participantId,"entries.created","campaign",req.params.id,JSON.stringify({numbers})]);
-await client.query("COMMIT");res.status(201).json({participantId:participantId,numbers,paymentRequired:false});
-}catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
-});
+// Legacy unreserved flow disabled to avoid bypassing active holds.
+app.post("/api/campaigns/:id/entries",requireParticipant,(req,res)=>error(res,410,"Use a reserva de 3 minutos e confirmação da inscrição gratuita"));
 
 /* Timed holds are exclusively for authorized FREE entries. No payment linkage. */
 app.get("/api/campaigns/:id/availability",async(req,res,next)=>{
