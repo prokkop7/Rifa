@@ -85,7 +85,7 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 .action-hero{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:#f1f8f8;margin-bottom:12px}
 .legal-content p{line-height:1.7;font-size:13px;color:#526d77}
 .action-extra{background:#f5fbf9;border:1px solid #deece9;border-radius:12px;padding:12px;margin:12px 0;color:#45636e}.action-extra p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;font-size:13px;margin:8px 0 0}#actionRegulationLink{display:inline-block;margin:10px 0 13px;color:#167f74;text-underline-offset:3px}#actionRegulationLink[hidden]{display:none}
-</style></head>
+.participant-switch{display:flex;gap:8px;margin:12px 0 17px}.participant-switch button{flex:1;border:1px solid #d6e8e5;border-radius:10px;background:#f3faf8;color:#4e7978;padding:11px;font-weight:750;cursor:pointer}.participant-switch button.selected{background:#208a7e;color:white;border-color:#208a7e}.participant-message{font-size:12px;line-height:1.5;margin:10px 0;color:#b45050;min-height:18px}.participant-message.ok{color:#187b68}.participant-entries{display:grid;gap:8px}.participant-entry{background:#f3faf8;border:1px solid #dcebe7;padding:10px;border-radius:10px;font-size:12px;color:#486773}.participant-entry strong{display:block;margin-bottom:4px}</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
@@ -127,7 +127,42 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 <section id="numeros" class="panel" aria-label="Números"><div class="kicker">Etapa 01 • Escolha</div><h1 class="headline">Escolha seus <span class="mint">números</span></h1><div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot selected"></i>Selecionado</span></div><div id="grid" class="grid" aria-label="Grade de 100 números"></div>
 <div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Valor total</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Comprar</button></div></section>
 <section id="reserva" class="panel" aria-label="Reserva"><div class="kicker">Acompanhamento</div><h1 class="headline">Minha <span class="mint">reserva</span></h1><div id="noReservation" class="glass empty-reservation"><div class="empty-icon">⌁</div><h3>Nenhuma reserva em andamento</h3><p>Quando uma solicitação de pagamento for iniciada, ela aparecerá aqui.</p><button class="button secondary" type="button" data-tab="numeros">Escolher números</button></div><div id="activeReservation" hidden><div class="glass"><div class="label">Tempo restante</div><div class="clock" id="clock">03:00</div><div class="sum"><span>Seus números</span><strong id="chosen">—</strong></div><div class="sum"><span>Valor total</span><strong id="reserveTotal">R$ 0,00</strong></div></div><button class="button" disabled>Continuar pagamento</button><button class="button secondary" id="cancel" type="button" style="margin-top:8px">Cancelar reserva</button></div></section>
-<section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Etapa 03 • Acompanhar</div><h1 class="headline">Minhas <span class="mint">participações</span></h1><div class="glass"><div class="label">Histórico de participações</div><h3 id="historyTitle">Nenhuma participação</h3><p id="historyText" class="lead">Você ainda não possui participações registradas.</p></div><div class="notice">Você poderá acompanhar aqui os eventos de que participou, seus números e resultados.</div></section>
+<section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Sua conta</div><h1 class="headline">Minha <span class="mint">área</span></h1>
+<div class="glass" id="participantGuest">
+<p class="lead">Entre para consultar seu cadastro e seus registros. Ainda não há compras habilitadas.</p>
+<div class="participant-switch" role="group" aria-label="Tipo de acesso">
+<button type="button" id="participantLoginTab" aria-pressed="true" class="selected">Entrar</button>
+<button type="button" id="participantRegisterTab" aria-pressed="false">Criar conta</button>
+</div>
+<form id="participantLoginForm" autocomplete="on">
+<div class="field"><label for="participantPhone">WhatsApp com DDD</label><input id="participantPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(21) 99999-9999" required></div>
+<div class="field"><label for="participantPassword">Senha</label><input id="participantPassword" type="password" autocomplete="current-password" minlength="12" maxlength="128" required></div>
+<button type="submit" class="button" id="participantLoginButton">Entrar na minha área</button>
+</form>
+<form id="participantRegisterForm" autocomplete="on" hidden>
+<div class="field"><label for="participantFullName">Nome completo</label><input id="participantFullName" type="text" autocomplete="name" minlength="3" maxlength="120" required></div>
+<div class="field"><label for="participantNewPhone">WhatsApp com DDD</label><input id="participantNewPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(21) 99999-9999" required></div>
+<div class="field"><label for="participantNewPassword">Crie uma senha (mínimo de 12 caracteres)</label><input id="participantNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></div>
+<div class="field"><label for="participantConfirmPassword">Confirme a senha</label><input id="participantConfirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></div>
+<button type="submit" class="button" id="participantRegisterButton">Cadastrar conta</button>
+</form>
+<p class="hint" style="margin-top:10px">Nesta etapa, aceitamos números brasileiros (+55). O telefone ainda não é verificado por mensagem.</p>
+</div>
+<div class="glass" id="participantAccount" hidden>
+<div class="label">Identificação</div>
+<h3 id="participantDisplayName" style="margin:7px 0">—</h3>
+<p id="participantDisplayPhone" class="lead">—</p>
+<p class="hint">ID do participante: <code id="participantDisplayId"></code></p>
+<div class="label">Histórico de participações</div>
+<h3 id="historyTitle">Nenhuma participação</h3>
+<p id="historyText" class="lead">Ainda não há participações confirmadas vinculadas a esta conta.</p>
+<div id="participantEntries" class="participant-entries"></div>
+<div class="notice" style="margin-top:12px">O cadastro não habilita a compra de números. Somente inscrições de ações devidamente autorizadas aparecerão aqui.</div>
+<button class="button secondary" id="participantRefresh" type="button" style="margin-top:12px">Atualizar histórico</button>
+<button class="button secondary" id="participantLogout" type="button" style="margin-top:8px">Sair da conta</button>
+</div>
+<p id="participantMessage" class="participant-message" role="status" aria-live="polite"></p>
+</section>
 <section id="acao" class="panel" aria-label="Detalhes da ação">
 <div class="kicker" id="actionCategory">Ação</div><h1 class="headline" id="actionHeadline">Detalhes da ação</h1>
 <div class="glass"><img id="actionHero" class="action-hero" alt="" hidden><p class="lead" id="actionDescription">Conheça os detalhes.</p>
@@ -245,6 +280,106 @@ async function loadCatalog(){
 const selectedLegal=new URL(location.href).searchParams.get("legal");
 if(selectedLegal==="termos"||selectedLegal==="seguranca")tab(selectedLegal);
 loadCatalog();
+
+// Participant auth is isolated from administrator sessions and payment providers.
+// Keep access tokens in memory only, so closing/reloading the page ends local access.
+const PARTICIPANT_API="https://painel-acoes.rayaconnect.com.br";
+let participantToken=null,participantInfo=null;
+const participantMsg=(message,ok=false)=>{
+ const e=$("#participantMessage");e.textContent=message;e.classList.toggle("ok",ok);
+};
+function showParticipantMode(mode){
+ const create=mode==="register";
+ $("#participantLoginForm").hidden=create;
+ $("#participantRegisterForm").hidden=!create;
+ $("#participantLoginTab").classList.toggle("selected",!create);
+ $("#participantRegisterTab").classList.toggle("selected",create);
+ $("#participantLoginTab").setAttribute("aria-pressed",String(!create));
+ $("#participantRegisterTab").setAttribute("aria-pressed",String(create));
+ participantMsg("");
+}
+$("#participantLoginTab").addEventListener("click",()=>showParticipantMode("login"));
+$("#participantRegisterTab").addEventListener("click",()=>showParticipantMode("register"));
+async function participantApi(path,options={}){
+ const headers={"Accept":"application/json",...(options.body?{"Content-Type":"application/json"}:{}),...(participantToken?{"Authorization":"Bearer "+participantToken}:{})};
+ const response=await fetch(PARTICIPANT_API+path,{...options,headers,cache:"no-store"});
+ const body=await response.json().catch(()=>({}));
+ if(!response.ok)throw Object.assign(new Error(body.error||"Falha de comunicação ("+response.status+")"),{status:response.status});
+ return body;
+}
+function resetParticipantSession(message=""){
+ participantToken=null;participantInfo=null;
+ $("#participantGuest").hidden=false;
+ $("#participantAccount").hidden=true;
+ $("#participantPassword").value="";
+ $("#participantNewPassword").value="";
+ $("#participantConfirmPassword").value="";
+ participantMsg(message);
+}
+async function displayParticipant(){
+ const info=await participantApi("/api/me");
+ participantInfo=info;
+ $("#participantDisplayName").textContent=info.fullName;
+ $("#participantDisplayPhone").textContent=info.phone;
+ $("#participantDisplayId").textContent=info.id;
+ $("#participantGuest").hidden=true;
+ $("#participantAccount").hidden=false;
+ await loadParticipantEntries();
+}
+async function loadParticipantEntries(){
+ try{
+  const result=await participantApi("/api/me/entries");
+  const entries=Array.isArray(result.entries)?result.entries:[];
+  $("#participantEntries").replaceChildren();
+  $("#historyTitle").textContent=entries.length?entries.length+" registro(s)":"Nenhuma participação";
+  $("#historyText").textContent=entries.length?"Registros confirmados na sua conta:":"Ainda não há participações confirmadas vinculadas a esta conta.";
+  for(const entry of entries){
+   const line=document.createElement("div");line.className="participant-entry";
+   const title=document.createElement("strong");title.textContent=entry.title||"Ação";
+   const detail=document.createElement("span");detail.textContent="Número "+String(entry.number).padStart(3,"0");
+   line.append(title,detail);$("#participantEntries").append(line);
+  }
+  participantMsg("Sua área foi atualizada.",true);
+ }catch(err){
+  if(err.status===401){resetParticipantSession("Sua sessão expirou. Entre novamente.")}
+  else participantMsg("Não foi possível atualizar o histórico: "+err.message);
+ }
+}
+$("#participantLoginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const button=$("#participantLoginButton");button.disabled=true;participantMsg("Verificando cadastro...");
+ try{
+  const data=await participantApi("/api/auth/login",{method:"POST",body:JSON.stringify({
+   phone:$("#participantPhone").value,password:$("#participantPassword").value
+  })});
+  participantToken=data.accessToken;
+  $("#participantPassword").value="";
+  await displayParticipant();
+ }catch(err){resetParticipantSession(err.status===401?"Telefone ou senha inválidos.":err.message)}
+ finally{button.disabled=false}
+});
+$("#participantRegisterForm").addEventListener("submit",async e=>{
+ e.preventDefault();const button=$("#participantRegisterButton");
+ const password=$("#participantNewPassword").value;
+ if(password!==$("#participantConfirmPassword").value){participantMsg("As senhas informadas são diferentes.");return}
+ button.disabled=true;participantMsg("Criando conta...");
+ try{
+  const phone=$("#participantNewPhone").value;
+  await participantApi("/api/auth/register",{method:"POST",body:JSON.stringify({
+   fullName:$("#participantFullName").value,phone,password
+  })});
+  $("#participantNewPassword").value="";$("#participantConfirmPassword").value="";
+  $("#participantPhone").value=phone;
+  showParticipantMode("login");
+  participantMsg("Conta criada! Entre com sua senha. O telefone ainda não foi verificado.",true);
+ }catch(err){participantMsg(err.message)}
+ finally{button.disabled=false}
+});
+$("#participantRefresh").addEventListener("click",()=>{if(participantToken)loadParticipantEntries()});
+$("#participantLogout").addEventListener("click",async()=>{
+ if(participantToken){try{await participantApi("/api/auth/logout",{method:"POST"})}catch{}}
+ resetParticipantSession("Sessão encerrada neste navegador.");
+});
 
 setInterval(tick,250);render();
 </script></body></html>
