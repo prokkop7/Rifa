@@ -2,16 +2,23 @@
 // Campaign entries and numbered prize draws MUST NOT use this module.
 import { timingSafeEqual } from "node:crypto";
 const API = "https://api-sandbox.asaas.com/v3";
-const CHECKOUT_BASE = "https://sandbox.asaas.com/checkoutSession/show/";
+const CHECKOUT_BASE = "https://asaas.com/checkoutSession/show?id=";
+const API_PRODUCTION = "https://api.asaas.com/v3";
+function checkedEnvironment(environment){
+ if(!["sandbox","production"].includes(environment))throw Error("Invalid Asaas environment");
+ return environment;
+}
 
-function settings(apiKeyOverride) {
-  if(process.env.ASAAS_ENV !== "sandbox") throw Error("Only Asaas sandbox is enabled");
+function settings(apiKeyOverride,environment="sandbox") {
+  checkedEnvironment(environment);
+  if(environment==="sandbox"&&process.env.ASAAS_ENV !== "sandbox") throw Error("Only Asaas sandbox is enabled for demonstration endpoints");
   if(!(apiKeyOverride||process.env.ASAAS_API_KEY)) throw Error("ASAAS_API_KEY not configured");
   return {"accept":"application/json","content-type":"application/json","access_token":apiKeyOverride||process.env.ASAAS_API_KEY,"User-Agent":"AcoesPlatform/0.2.0"};
 }
-async function request(path,opts={},apiKeyOverride) {
-  const response=await fetch(API+path,{
-    ...opts,headers:{...settings(apiKeyOverride),...(opts.headers||{})},
+async function request(path,opts={},apiKeyOverride,environment="sandbox") {
+  const url=(checkedEnvironment(environment)==="production"?API_PRODUCTION:API)+path;
+  const response=await fetch(url,{
+    ...opts,headers:{...settings(apiKeyOverride,environment),...(opts.headers||{})},
     signal:AbortSignal.timeout(12000)
   });
   const data=await response.json().catch(()=>null);
@@ -35,7 +42,8 @@ export async function verifyAsaasProductionConnection(apiKey){
   return {configured:true,connected:response.ok,environment:"production",...(response.ok?{}:{httpStatus:response.status})};
  }catch{return {configured:true,connected:false,environment:"production"}}
 }
-export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl,apiKey}){
+export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl,apiKey,environment="sandbox"}){
+ checkedEnvironment(environment);
  if(!/^[a-zA-Z0-9-]{12,200}$/.test(externalReference))throw Error("Invalid order reference");
  if(typeof title!=="string"||title.trim().length<4||title.length>120)throw Error("Invalid order title");
  if(!Number.isSafeInteger(amountCents)||amountCents<100)throw Error("Invalid commercial amount");
@@ -50,9 +58,9 @@ export async function createCommercialCheckout({externalReference,title,amountCe
   externalReference,
   callback:{successUrl,cancelUrl,expiredUrl},
   items:[{name:title.trim().slice(0,30),description:title.trim(),quantity:1,value:amountCents/100}]
- })},apiKey);
+ })},apiKey,environment);
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
- return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment:"sandbox"};
+ return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment};
 }
 // Admin-only Sandbox Pix demonstration. Never connected to campaign entries.
 export async function createSandboxPixCustomer({name,cpfCnpj,mobilePhone,externalReference,apiKey}){
