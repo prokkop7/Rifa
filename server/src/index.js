@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import pg from "pg";
+import {verifyAsaasConnection,verifyAsaasWebhookToken} from "./asaas.js";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -160,6 +161,26 @@ if(!uuid(organizerId)||typeof title!=="string"||title.trim().length<4||title.len
 try{const r=await pool.query("insert into campaigns(organizer_id,title,description,kind,number_count) values($1,$2,$3,$4,$5) returning id,status",[organizerId,title.trim(),String(description||"").slice(0,4000),kind,numberCount]);res.status(201).json(r.rows[0])}catch(e){next(e)}});
 
 /* Staging-only system administrator endpoints. Do not expose the master API key to a browser. */
+
+// Admin-only Asaas sandbox connection diagnostic. Does not initiate charges.
+app.get("/api/admin/asaas/status",auth,async(req,res,next)=>{
+ try{res.json(await verifyAsaasConnection())}
+ catch(e){next(e)}
+});
+// Receive commercial payment events only; never allocate campaign numbers via payment events.
+app.post("/api/webhooks/asaas",async(req,res,next)=>{
+ if(!verifyAsaasWebhookToken(req.get("asaas-access-token")))return error(res,401,"Not authorized");
+ const event=req.body;
+ if(!event||typeof event.id!=="string"||event.id.length>200||typeof event.event!=="string"||!event.payment||typeof event.payment.id!=="string")return error(res,400,"Invalid event");
+ try{
+  const paymentId=event.payment.id;
+  await pool.query(`insert into payment_events(provider,provider_event_id,commercial_order_id,payload)
+  values('asaas',$1,(select id from commercial_orders where provider_payment_id=$2),$3)
+  on conflict (provider,provider_event_id) do nothing`,[event.id,paymentId,JSON.stringify(event)]);
+  res.status(200).json({received:true});
+ }catch(e){next(e)}
+});
+
 app.get("/api/admin/overview",auth,async(req,res,next)=>{
  try{
   const [organizers,campaigns,participants,entries]=await Promise.all([
