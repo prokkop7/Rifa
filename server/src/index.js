@@ -120,7 +120,14 @@ app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
 app.get("/api/me/action-holds",requireParticipant,async(req,res,next)=>{
  try{
   const r=await pool.query("select a.slug,a.title,h.number,h.reservation_group,h.expires_at from action_number_holds h join action_catalog a on a.id=h.action_id where h.participant_id=$1 and h.expires_at>now() order by h.expires_at asc,h.number asc limit 200",[req.participant.participant_id]);
-  res.set("Cache-Control","no-store");res.json({holds:r.rows,purchasesEnabled:false});
+  const groups=new Map();
+  for(const h of r.rows){
+   const key=h.reservation_group;
+   if(!groups.has(key))groups.set(key,{reservationId:key,slug:h.slug,title:h.title,expiresAt:h.expires_at,numbers:[]});
+   groups.get(key).numbers.push(h.number);
+  }
+  res.set("Cache-Control","no-store");
+  res.json({holds:r.rows,reservations:[...groups.values()],serverTime:new Date().toISOString(),purchasesEnabled:false});
  }catch(e){next(e)}
 });
 const previewHoldLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:"draft-7",legacyHeaders:false});
@@ -142,6 +149,7 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
   await client.query("delete from action_number_holds where action_id=$1 and expires_at<=now()",[action.id]);
   const existing=await client.query("select number from action_number_holds where action_id=$1 and participant_id=$2",[action.id,pid]);
   const ownerNumbers=new Set(existing.rows.map(r=>r.number));
+  if(ownerNumbers.size){await client.query("ROLLBACK");return error(res,409,"Você já possui uma reserva temporária nesta ação. Libere-a ou aguarde a expiração.")}
   if(new Set([...ownerNumbers,...numbers]).size>action.max_numbers_per_person){
    await client.query("ROLLBACK");return error(res,409,"Limite por participante atingido; libere a seleção anterior");
   }
