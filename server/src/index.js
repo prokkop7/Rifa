@@ -625,9 +625,9 @@ app.get("/api/admin/commercial-orders/:id",auth,async(req,res,next)=>{
 });
 // Persist Asaas webhook events using provider IDs for idempotency.
 // Only CHECKOUT_PAID updates a commercial order, never raffle numbers.
-app.post("/api/webhooks/asaas",async(req,res,next)=>{
+async function processAsaasWebhook(req,res,next,environment){
  let providerSettings;
- try{providerSettings=await getAsaasSettings(pool)}catch(e){return next(e)}
+ try{providerSettings=await getAsaasSettings(pool,environment)}catch(e){return next(e)}
  if(!providerSettings||!verifyAsaasWebhookToken(req.get("asaas-access-token"),providerSettings.webhookToken))return error(res,401,"Not authorized");
  const evt=req.body;
  if(!evt||typeof evt.id!=="string"||evt.id.length>200||typeof evt.event!=="string"||evt.event.length>100)
@@ -640,15 +640,15 @@ app.post("/api/webhooks/asaas",async(req,res,next)=>{
  try{
    await client.query("BEGIN");
    const orderQuery=checkoutId?
-    "select id from commercial_orders where provider_checkout_id=$1 for update":
-    "select id from commercial_orders where provider_payment_id=$1 for update";
-   const found=await client.query(orderQuery,[checkoutId||paymentId]);
+    "select id from commercial_orders where provider_checkout_id=$1 and provider_environment=$2 for update":
+    "select id from commercial_orders where provider_payment_id=$1 and provider_environment=$2 for update";
+   const found=await client.query(orderQuery,[checkoutId||paymentId,environment]);
    // Unknown events are saved and acknowledged; never grant access or entries.
    const id=found.rows[0]?.id||null;
    const inserted=await client.query(
-    "insert into payment_events(provider,provider_event_id,commercial_order_id,payload) values('asaas',$1,$2,$3) on conflict(provider,provider_event_id) do nothing returning id",
-    [evt.id,id,JSON.stringify(evt)]);
-   if(inserted.rowCount&&paymentId){
+    "insert into payment_events(provider,provider_event_id,commercial_order_id,payload) values($1,$2,$3,$4) on conflict(provider,provider_event_id) do nothing returning id",
+    [environment==="sandbox"?"asaas":"asaas_production",evt.id,id,JSON.stringify(evt)]);
+   if(inserted.rowCount&&paymentId&&environment==="sandbox"){
      const demo=await client.query("select id from sandbox_pix_demos where provider_payment_id=$1 for update",[paymentId]);
      if(demo.rowCount){
        const did=demo.rows[0].id;
@@ -670,7 +670,9 @@ app.post("/api/webhooks/asaas",async(req,res,next)=>{
    res.json({received:true});
  }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
  finally{client.release()}
-});
+}
+app.post("/api/webhooks/asaas",(req,res,next)=>processAsaasWebhook(req,res,next,"sandbox"));
+app.post("/api/webhooks/asaas/production",(req,res,next)=>processAsaasWebhook(req,res,next,"production"));
 app.get("/api/admin/overview",auth,async(req,res,next)=>{
  try{
   const [organizers,campaigns,participants,entries]=await Promise.all([
