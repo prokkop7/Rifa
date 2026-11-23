@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>AÇÕES • Integração Asaas Sandbox</title><link rel="stylesheet" href="/admin/asaas/styles.css"></head>
+<body><main class="shell"><header><div><div class="brand">A<span>Ç</span>ÕES</div><p>Configurações de pagamento</p></div><span class="tag">SANDBOX</span></header>
+<section class="panel"><h1>Conectar Asaas</h1><p class="sub">Cadastre as credenciais do ambiente de testes. Nenhuma cobrança real será ativada por esta configuração.</p>
+<div class="status-row"><span>Conexão</span><strong id="connection">Não verificada</strong></div>
+<form id="configForm" autocomplete="off">
+<label for="adminKey">Chave administrativa desta instalação</label><input id="adminKey" type="password" required autocomplete="off" spellcheck="false" placeholder="ADMIN_API_KEY do servidor">
+<label for="apiKey">Chave de API Asaas Sandbox</label><input id="apiKey" type="password" required autocomplete="off" spellcheck="false" placeholder="$aact_...">
+<label for="webhookToken">Token de autenticação do webhook</label><input id="webhookToken" type="password" minlength="32" maxlength="255" required autocomplete="off" spellcheck="false" placeholder="Mínimo 32 caracteres, sem espaços">
+<p class="help">O token de webhook é diferente da chave API. Após salvar, os segredos não são apresentados novamente.</p>
+<div class="actions"><button type="submit" class="primary">Testar e salvar</button><button type="button" id="check" class="outline">Verificar conexão</button></div>
+</form><p id="message" role="status" aria-live="polite"></p></section>
+<section class="panel compact"><h2>Webhook do Asaas</h2><p>Configure a URL HTTPS do seu backend na conta Sandbox e o mesmo token informado acima.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
+<section class="panel compact"><h2>Remover conexão</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar Sandbox</button></section>
+<footer>Acesso administrativo de homologação. Não utilize chaves de produção nesta tela.</footer>
+</main><script src="/admin/asaas/app.js" defer></script></body></html>
