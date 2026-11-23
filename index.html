@@ -11,33 +11,57 @@ main{width:100%;height:100dvh;min-height:520px;max-width:560px;margin:auto;displ
 @media(min-width:700px){body{display:flex;align-items:center;justify-content:center;padding:10px}main{width:70vw;height:80dvh;min-height:570px;max-width:none;border:1px solid #365362;border-radius:27px}.body{padding:0 5% 24px}.top{padding:18px 5% 13px}.bottom{padding:11px 5%}.grid{gap:7px}.num{font-size:12px}.gift .thumb{width:160px;min-width:160px}.panel{max-width:880px;margin:auto}.metric strong{font-size:21px}}
 @media(min-width:1200px){main{max-width:1000px}.body{padding-inline:6%}.grid{gap:9px}.num{font-size:14px}}
 @media(max-height:610px){.top{padding-top:8px;padding-bottom:6px}.glass{padding:11px;margin:7px 0}.metrics{margin-top:8px}.bottom{padding-top:5px}.body{padding-bottom:8px}}
-.prize-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:10px 0}.prize-tile{display:flex;min-width:0;flex-direction:column;align-items:stretch;gap:9px;margin:0;padding:12px}.prize-tile .thumb{width:100%;min-width:0;aspect-ratio:2.2;flex:none}.prize-tile .gift-copy{min-width:0}.prize-tile h3{font-size:14px;line-height:1.25;margin:3px 0}.prize-tile p{font-size:11px;line-height:1.4}.prize-tile .computer{font-size:30px}@media(min-width:700px){.prize-tile .thumb{width:100%;min-width:0;aspect-ratio:2.7}.prize-tile{padding:13px 15px}.prize-tile h3{font-size:16px}.prize-tile p{font-size:12px}}@media(max-width:360px){.prize-pair{gap:7px}.prize-tile{padding:9px}.prize-tile h3{font-size:12px}.prize-tile p{font-size:10px}} </style></head>
+.prize-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:10px 0}.prize-tile{display:flex;min-width:0;flex-direction:column;align-items:stretch;gap:9px;margin:0;padding:12px}.prize-tile .thumb{width:100%;min-width:0;aspect-ratio:2.2;flex:none}.prize-tile .gift-copy{min-width:0}.prize-tile h3{font-size:14px;line-height:1.25;margin:3px 0}.prize-tile p{font-size:11px;line-height:1.4}.prize-tile .computer{font-size:30px}@media(min-width:700px){.prize-tile .thumb{width:100%;min-width:0;aspect-ratio:2.7}.prize-tile{padding:13px 15px}.prize-tile h3{font-size:16px}.prize-tile p{font-size:12px}}@media(max-width:360px){.prize-pair{gap:7px}.prize-tile{padding:9px}.prize-tile h3{font-size:12px}.prize-tile p{font-size:10px}}
+/* Desktop: more usable vertical space. Preserve 70% width / 80% height on tablets. */
+@media(min-width:1100px){main{width:70vw;max-width:1180px;height:calc(100dvh - 24px);min-height:0}.body{padding-bottom:12px}.top{padding-top:12px;padding-bottom:8px}.kicker{margin:8px 0 5px}.headline{font-size:clamp(25px,2.4vw,34px);margin-bottom:7px}.lead{margin-bottom:8px;font-size:12px;line-height:1.4}.prize-pair{margin:7px 0;gap:10px}.prize-tile{padding:9px 12px;gap:6px}.prize-tile .thumb{aspect-ratio:3.4}.prize-tile h3{margin:1px 0}.metrics{margin-top:8px}.metric{padding:7px}.button{min-height:39px;padding:9px}.bottom{padding-top:7px;padding-bottom:7px}}
+@media(min-width:700px) and (max-width:1099px){main{height:80dvh;min-height:0}}
+.event-filters{display:flex;gap:8px;margin:12px 0}.event-filter{border:1px solid #315365;background:#123142;color:#b9d6df;border-radius:999px;font-weight:700;padding:8px 13px;cursor:pointer;font:inherit;font-size:12px}.event-filter.active{background:#1b6059;color:#dffff4;border-color:#30b99d}.event-item{padding:0;overflow:hidden}.event-toggle{width:100%;border:0;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:16px;text-align:left;background:none;color:inherit;cursor:pointer}.event-toggle h3{margin:3px 0;font-size:18px}.event-toggle p{margin:0;font-size:12px;color:var(--quiet)}.event-side{display:flex;align-items:center;gap:11px}.event-status{display:inline-block;border-radius:99px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap}.event-status.preparing{background:#28495a;color:#addbe6}.event-chevron{font-size:22px;color:var(--mint)}.event-details{border-top:1px solid #335063;padding:10px 16px 16px}.event-details .prize-pair{margin:0}.event-details .gift{background:#112e3d}.empty-events{text-align:center;padding:22px;color:var(--quiet)}@media(max-width:410px){.event-filters{gap:5px}.event-filter{font-size:11px;padding:7px 10px}.event-toggle{padding:12px}}
+</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA • LONDRES</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
-<div class="kicker">Comunidade brasileira no Reino Unido</div><h1 class="headline">Dois notebooks.<br><span class="mint">Dois prêmios.</span></h1>
-<p class="lead">Conheça os equipamentos e explore uma experiência de participação projetada para funcionar diretamente no celular.</p>
+<div class="kicker">Comunidade brasileira em Londres e região</div><h1 class="headline">Dois notebooks.<br><span class="mint">Dois prêmios.</span></h1>
+<p class="lead">Conheça os prêmios do evento e escolha seus números.</p>
 <div class="prize-pair">
 <article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.jpg" alt="Notebook Dell original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Notebook Dell</h3><p>Core i5 · 4ª geração<br>4 GB RAM · SSD 240 GB</p></div></article>
 <article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.jpg" alt="Notebook HP original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>Notebook HP</h3><p>Core i3 · 7ª geração<br>8 GB RAM · SSD 240 GB</p></div></article>
 </div>
-<div class="metrics"><div class="metric"><strong>100</strong><span>Números</span></div><div class="metric"><strong>R$ 50</strong><span>Valor ilustrativo</span></div><div class="metric"><strong>02</strong><span>Prêmios</span></div></div>
-<div style="margin-top:15px"><button class="button" data-tab="numeros">Explorar números</button></div><p class="hint">Protótipo visual; não há inscrição nem pagamento real nesta página.</p>
+<div class="metrics"><div class="metric"><strong>100</strong><span>Números</span></div><div class="metric"><strong>R$ 50</strong><span>Valor total</span></div><div class="metric"><strong>02</strong><span>Prêmios</span></div></div>
+<div style="margin-top:15px"><button class="button" data-tab="numeros">Escolher números</button></div>
 </section>
-<section id="premios" class="panel" aria-label="Prêmios"><div class="kicker">Equipamentos originais</div><h1 class="headline">Conheça os <span class="mint">prêmios</span></h1><p class="lead">A apresentação usa os modelos que você informou. Fotografias reais serão exibidas quando os arquivos forem adicionados ao repositório.</p>
-<div class="prize-pair">
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.jpg" alt="Foto original Dell" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Dell Core i5</h3><p>4ª geração · 4 GB RAM<br>SSD de 240 GB</p></div></article>
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.jpg" alt="Foto original HP" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>HP Core i3</h3><p>7ª geração · 8 GB RAM<br>SSD de 240 GB</p></div></article>
+<section id="eventos" class="panel" aria-label="Eventos">
+<div class="kicker">Campanhas e resultados</div>
+<h1 class="headline">Nossos <span class="mint">eventos</span></h1>
+<p class="lead">Selecione um evento para conhecer os prêmios e acompanhar sua situação.</p>
+<div class="event-filters" role="group" aria-label="Filtrar eventos">
+<button type="button" class="event-filter active" data-filter="todos" aria-pressed="true">Todos</button>
+<button type="button" class="event-filter" data-filter="disponivel" aria-pressed="false">Disponíveis</button>
+<button type="button" class="event-filter" data-filter="finalizado" aria-pressed="false">Finalizados</button>
 </div>
-<div class="notice">Condição: usados. Fotos ilustradas na interface até que as imagens dos itens originais sejam publicadas.</div></section>
+<article class="glass event-item" data-status="preparacao">
+<button type="button" class="event-toggle" id="eventToggle" aria-expanded="false" aria-controls="eventDetails">
+<div><div class="label">EVENTO 001</div><h3>Dois notebooks</h3><p>Dell Core i5 + HP Core i3</p></div>
+<div class="event-side"><span class="event-status preparing">Em preparação</span><span class="event-chevron">⌄</span></div>
+</button>
+<div id="eventDetails" class="event-details" hidden>
+<div class="prize-pair">
+<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.jpg" alt="Notebook Dell" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Notebook Dell</h3><p>Core i5 · 4ª geração<br>4 GB · SSD 240 GB</p></div></article>
+<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.jpg" alt="Notebook HP" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>Notebook HP</h3><p>Core i3 · 7ª geração<br>8 GB · SSD 240 GB</p></div></article>
+</div>
+<div class="sum"><span>100 números</span><strong class="mint">R$ 50 cada</strong></div>
+<button class="button" type="button" data-tab="numeros">Escolher números</button>
+</div>
+</article>
+<p id="emptyEvents" class="empty-events" hidden>Nenhum evento nesta categoria.</p>
+</section>
 <section id="numeros" class="panel" aria-label="Números"><div class="kicker">Etapa 01 • Escolha</div><h1 class="headline">Escolha seus <span class="mint">números</span></h1><div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot selected"></i>Selecionado</span></div><div id="grid" class="grid" aria-label="Grade de 100 números"></div>
-<div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Total ilustrativo</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Avançar para reserva</button></div><p class="hint">Não há bloqueio compartilhado nesta demonstração.</p></section>
-<section id="reserva" class="panel" aria-label="Reserva"><div class="kicker">Etapa 02 • Confirmação</div><h1 class="headline">Sua <span class="mint">reserva</span></h1><div class="glass"><div class="label">Tempo restante • simulação local</div><div class="clock" id="clock">03:00</div><p class="hint">A contagem inicia ao avançar pela aba Números. Não assegura disponibilidade em nenhuma campanha real.</p><div class="sum"><span>Seus números</span><strong id="chosen">—</strong></div><div class="sum"><span>Valor ilustrativo</span><strong id="reserveTotal">R$ 0,00</strong></div></div><button class="button" disabled>Pagar • indisponível</button><button class="button secondary" id="cancel" style="margin-top:8px">Cancelar simulação</button><p class="hint">Pagamentos e confirmações dependem de integração e enquadramento da campanha no Reino Unido.</p></section>
-<section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Etapa 03 • Acompanhar</div><h1 class="headline">Minhas <span class="mint">participações</span></h1><div class="glass"><div class="label">Minha seleção demonstrativa</div><h3 id="historyTitle">Nenhuma participação</h3><p id="historyText" class="lead">Selecione números na aba Números para explorar o fluxo.</p></div><div class="notice">A área de histórico real depende de autenticação e integração com o servidor. Nenhuma transação é registrada por esta prévia.</div></section>
+<div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Valor total</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Avançar para reserva</button></div></section>
+<section id="reserva" class="panel" aria-label="Reserva"><div class="kicker">Etapa 02 • Confirmação</div><h1 class="headline">Sua <span class="mint">reserva</span></h1><div class="glass"><div class="label">Tempo restante</div><div class="clock" id="clock">03:00</div><div class="sum"><span>Seus números</span><strong id="chosen">—</strong></div><div class="sum"><span>Valor por número</span><strong id="reserveTotal">R$ 0,00</strong></div></div><button class="button" disabled>Pagar • indisponível</button><button class="button secondary" id="cancel" style="margin-top:8px">Cancelar simulação</button></section>
+<section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Etapa 03 • Acompanhar</div><h1 class="headline">Minhas <span class="mint">participações</span></h1><div class="glass"><div class="label">Histórico de participações</div><h3 id="historyTitle">Nenhuma participação</h3><p id="historyText" class="lead">Você ainda não possui participações registradas.</p></div><div class="notice">Você poderá acompanhar aqui os eventos de que participou, seus números e resultados.</div></section>
 </div>
 <nav class="bottom" aria-label="Abas principais">
 <button class="tab" type="button" data-tab="inicio" aria-selected="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-7H9v7H3z"/></svg>Início</button>
-<button class="tab" type="button" data-tab="premios" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8S5 7 6 4c1-4 6 0 6 4Zm0 0s7-1 6-4c-1-4-6 0-6 4Z"/></svg>Prêmios</button>
+<button class="tab" type="button" data-tab="eventos" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8S5 7 6 4c1-4 6 0 6 4Zm0 0s7-1 6-4c-1-4-6 0-6 4Z"/></svg>Eventos</button>
 <button class="tab" type="button" data-tab="numeros" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>Números</button>
 <button class="tab" type="button" data-tab="reserva" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>Reserva</button>
 <button class="tab" type="button" data-tab="minhas" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-7 8-7s8 2 8 7"/></svg>Minha área</button>
@@ -47,9 +71,17 @@ main{width:100%;height:100dvh;min-height:520px;max-width:560px;margin:auto;displ
 function fmt(n){return String(n).padStart(3,"0")}function money(n){return (n*50).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function tab(name){for(const p of document.querySelectorAll(".panel"))p.classList.toggle("current",p.id===name);for(const b of document.querySelectorAll(".tab"))b.setAttribute("aria-selected",String(b.dataset.tab===name));$("#scrollbody").scrollTop=0}
 function render(){const g=$("#grid");g.replaceChildren();for(let n=1;n<=100;n++){let b=document.createElement("button");b.className="num";b.type="button";b.textContent=fmt(n);b.setAttribute("aria-pressed",String(selection.has(n)));b.addEventListener("click",()=>{selection.has(n)?selection.delete(n):selection.add(n);render()});g.append(b)}$("#count").textContent=selection.size+" números";$("#total").textContent=money(selection.size);$("#reserve").disabled=!selection.size;$("#chosen").textContent=selection.size?Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", "):"—";$("#reserveTotal").textContent=money(selection.size)}
-function tick(){if(!expiry)return;let sec=Math.max(0,Math.ceil((expiry-Date.now())/1000));$("#clock").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(sec===0){expiry=0;$("#historyTitle").textContent="Simulação encerrada";$("#historyText").textContent="O tempo de reserva demonstrativa acabou."}}
+function tick(){if(!expiry)return;let sec=Math.max(0,Math.ceil((expiry-Date.now())/1000));$("#clock").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(sec===0){expiry=0;$("#historyTitle").textContent="Reserva encerrada";$("#historyText").textContent="O tempo da seleção terminou."}}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>tab(b.dataset.tab)));
-$("#reserve").addEventListener("click",()=>{if(!selection.size)return;expiry=Date.now()+180000;$("#historyTitle").textContent="Reserva demonstrativa";$("#historyText").textContent=Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", ")+" • sem pagamento";tick();tab("reserva")});
+$("#reserve").addEventListener("click",()=>{if(!selection.size)return;expiry=Date.now()+180000;$("#historyTitle").textContent="Seleção em andamento";$("#historyText").textContent=Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", ");tick();tab("reserva")});
 $("#cancel").addEventListener("click",()=>{expiry=0;$("#clock").textContent="03:00";selection.clear();render();tab("numeros")});
+
+const eventToggle=document.getElementById("eventToggle");
+eventToggle.addEventListener("click",()=>{const details=document.getElementById("eventDetails");const open=details.hidden;details.hidden=!open;eventToggle.setAttribute("aria-expanded",String(open))});
+document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{
+ const filter=button.dataset.filter;document.querySelectorAll("[data-filter]").forEach(b=>{b.classList.toggle("active",b===button);b.setAttribute("aria-pressed",String(b===button))});
+ let shown=0;document.querySelectorAll(".event-item").forEach(item=>{const visible=filter==="todos"||item.dataset.status===filter;item.hidden=!visible;if(visible)shown++});
+ document.getElementById("emptyEvents").hidden=shown!==0;
+}));
 setInterval(tick,250);render();
 </script></body></html>
