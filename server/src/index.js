@@ -198,13 +198,14 @@ app.post("/api/admin/asaas/login",requireAdminLoginReady,adminLoginLimiter,async
   if(adminSessions.size>=10)adminSessions.delete(adminSessions.keys().next().value);
   adminSessions.set(digest(token),{expiresAt:Date.now()+8*60*60*1000});
   res.set("Cache-Control","no-store");
-  res.cookie("acoes_admin",token,{httpOnly:true,secure:req.secure,sameSite:"strict",path:"/api/admin/asaas",maxAge:8*60*60*1000});
+  res.cookie("acoes_admin",token,{httpOnly:true,secure:req.secure,sameSite:"strict",path:"/api/admin",maxAge:8*60*60*1000});
   res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL});
  }catch(e){console.error("Admin login error",e.message);return error(res,500,"Erro interno")}
 });
 app.get("/api/admin/asaas/session",requireAdminLoginReady,sessionAdmin,(req,res)=>res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL}));
 app.post("/api/admin/asaas/logout",requireAdminLoginReady,sessionAdmin,(req,res)=>{
  adminSessions.delete(digest(adminCookie(req)));
+ res.clearCookie("acoes_admin",{path:"/api/admin",sameSite:"strict",secure:req.secure,httpOnly:true});
  res.clearCookie("acoes_admin",{path:"/api/admin/asaas",sameSite:"strict",secure:req.secure,httpOnly:true});
  res.json({authenticated:false});
 });
