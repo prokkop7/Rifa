@@ -4,7 +4,9 @@ import pg from "pg";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import {timingSafeEqual} from "node:crypto";
+import {timingSafeEqual,randomBytes,createHash,scrypt as scryptCallback} from "node:crypto";
+import {promisify} from "node:util";
+const scrypt=promisify(scryptCallback);
 
 const required=["DATABASE_URL","APP_ORIGIN","ADMIN_API_KEY"];
 for(const k of required){if(!process.env[k])throw Error("Missing configuration: "+k)}
@@ -18,6 +20,66 @@ const uuid=s=>typeof s==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[8
 const error=(res,status,message)=>res.status(status).json({error:message});
 const auth=(req,res,next)=>{const supplied=(req.get("authorization")||"").replace(/^Bearer /i,"");const a=Buffer.from(supplied),b=Buffer.from(process.env.ADMIN_API_KEY);if(a.length!==b.length||!timingSafeEqual(a,b))return error(res,401,"Não autorizado");next()};
 function phone(value){let n=String(value||"").replace(/\D/g,"");if(n.startsWith("55")&&(n.length===12||n.length===13))n=n.slice(2);return /^[1-9][1-9][0-9]{8,9}$/.test(n)?"+55"+n:null}
+
+const digest=token=>createHash("sha256").update(token).digest("hex");
+async function makePassword(password) {
+ const salt=randomBytes(24).toString("hex");
+ const hash=(await scrypt(password,salt,64)).toString("hex");
+ return {salt,hash};
+}
+async function checkPassword(password,salt,expected){
+ const hash=(await scrypt(password,salt,64)).toString("hex");
+ return timingSafeEqual(Buffer.from(hash,"hex"),Buffer.from(expected,"hex"));
+}
+async function requireParticipant(req,res,next){
+ const token=(req.get("authorization")||"").replace(/^Bearer /i,"");
+ if(!/^[a-f0-9]{64}$/.test(token))return error(res,401,"Faça login");
+ try {
+  const q=await pool.query("select s.id as session_id,p.id as participant_id,p.full_name,p.phone_e164 from participant_sessions s join participant_accounts a on a.id=s.account_id join participants p on p.id=a.participant_id where s.token_hash=$1 and s.revoked_at is null and s.expires_at>now()",[digest(token)]);
+  if(!q.rowCount)return error(res,401,"Sessão expirada");
+  req.participant=q.rows[0];
+  next();
+ }catch(err){next(err)}
+}
+const loginLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:"draft-7",legacyHeaders:false});
+app.post("/api/auth/register",loginLimiter,async(req,res,next)=>{
+ const name=String(req.body?.fullName||"").trim(),normalized=phone(req.body?.phone);
+ const password=req.body?.password;
+ if(name.length<3||name.length>120||!normalized||typeof password!=="string"||password.length<12||password.length>128)return error(res,400,"Informe nome, telefone e senha de 12 a 128 caracteres");
+ const client=await pool.connect();
+ try{
+  const {salt,hash}=await makePassword(password);
+  await client.query("BEGIN");
+  const p=await client.query("insert into participants(full_name,phone_e164) values($1,$2) on conflict(phone_e164) do nothing returning id",[name,normalized]);
+  if(!p.rowCount){await client.query("ROLLBACK");return error(res,409,"Telefone já cadastrado; não é possível reivindicar cadastro antigo sem verificação de identidade")}
+  await client.query("insert into participant_accounts(participant_id,password_salt,password_hash) values($1,$2,$3)",[p.rows[0].id,salt,hash]);
+  await client.query("COMMIT");
+  res.status(201).json({created:true,message:"Conta criada. Número de telefone ainda não verificado."});
+ }catch(err){await client.query("ROLLBACK").catch(()=>{});next(err)}finally{client.release()}
+});
+app.post("/api/auth/login",loginLimiter,async(req,res,next)=>{
+ const normalized=phone(req.body?.phone),password=req.body?.password;
+ if(!normalized||typeof password!=="string"||password.length>128)return error(res,401,"Credenciais inválidas");
+ try{
+  const q=await pool.query("select a.id,a.password_salt,a.password_hash from participant_accounts a join participants p on p.id=a.participant_id where p.phone_e164=$1",[normalized]);
+  if(!q.rowCount)return error(res,401,"Credenciais inválidas");
+  if(!await checkPassword(password,q.rows[0].password_salt,q.rows[0].password_hash))return error(res,401,"Credenciais inválidas");
+  const token=randomBytes(32).toString("hex");
+  await pool.query("insert into participant_sessions(account_id,token_hash,expires_at) values($1,$2,now()+interval '7 days')",[q.rows[0].id,digest(token)]);
+  res.json({accessToken:token,expiresInSeconds:604800});
+ }catch(err){next(err)}
+});
+app.get("/api/me",requireParticipant,(req,res)=>res.json({id:req.participant.participant_id,fullName:req.participant.full_name,phone:req.participant.phone_e164}));
+app.get("/api/me/entries",requireParticipant,async(req,res,next)=>{
+ try{
+  const q=await pool.query("select c.id as campaign_id,c.title,c.status,e.id as entry_id,e.number,e.created_at from entries e join campaigns c on c.id=e.campaign_id where e.participant_id=$1 order by e.created_at desc limit 200",[req.participant.participant_id]);
+  res.json({entries:q.rows});
+ }catch(err){next(err)}
+});
+app.post("/api/auth/logout",requireParticipant,async(req,res,next)=>{
+ try{await pool.query("update participant_sessions set revoked_at=now() where id=$1",[req.participant.session_id]);res.json({loggedOut:true})}catch(err){next(err)}
+});
+
 app.get("/api/health",async(req,res)=>{try{await pool.query("select 1");res.json({ok:true})}catch{res.status(503).json({ok:false})}});
 app.get("/api/campaigns",async(req,res,next)=>{try{const r=await pool.query("select id,title,description,kind,number_count,regulation_url from campaigns where status='published' order by created_at desc limit 50");res.json({campaigns:r.rows})}catch(e){next(e)}});
 app.get("/api/campaigns/:id",async(req,res,next)=>{if(!uuid(req.params.id))return error(res,400,"ID inválido");try{
@@ -27,11 +89,9 @@ const p=await pool.query("select id,label,specs,image_url,position from prizes w
 app.get("/api/campaigns/:id/numbers",async(req,res,next)=>{if(!uuid(req.params.id))return error(res,400,"ID inválido");try{
 const c=await pool.query("select number_count from campaigns where id=$1 and status='published'",[req.params.id]);if(!c.rowCount)return error(res,404,"Campanha indisponível");
 const r=await pool.query("select number from entries where campaign_id=$1 order by number",[req.params.id]);res.json({total:c.rows[0].number_count,occupied:r.rows.map(x=>x.number)})}catch(e){next(e)}});
-app.post("/api/campaigns/:id/entries",rateLimit({windowMs:3600000,limit:8,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res,next)=>{
+app.post("/api/campaigns/:id/entries",requireParticipant,rateLimit({windowMs:3600000,limit:8,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res,next)=>{
 if(!uuid(req.params.id))return error(res,400,"ID inválido");
-const {fullName,phone:rawPhone,socialNetwork,socialHandle,numbers,acceptedRegulation}=req.body||{};
-const name=String(fullName||"").trim(),normalized=phone(rawPhone);
-if(name.length<3||name.length>120||!normalized)return error(res,400,"Nome ou telefone inválido");
+const {socialNetwork,socialHandle,numbers,acceptedRegulation}=req.body||{};
 if(!Array.isArray(numbers)||numbers.length<1||numbers.length>10||!numbers.every(Number.isInteger)||new Set(numbers).size!==numbers.length)return error(res,400,"Selecione de 1 a 10 números distintos");
 if(acceptedRegulation!==true)return error(res,400,"Aceite do regulamento obrigatório");
 if(String(socialNetwork||"").length>40||String(socialHandle||"").length>80)return error(res,400,"Rede social inválida");
@@ -41,10 +101,11 @@ await client.query("BEGIN");
 const c=await client.query("select number_count from campaigns where id=$1 and status='published' and kind in ('authorized_free_promotion','authorized_osc') and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) for share",[req.params.id]);
 if(!c.rowCount){await client.query("ROLLBACK");return error(res,409,"Campanha não habilitada para inscrição")}
 if(numbers.some(n=>n<1||n>c.rows[0].number_count)){await client.query("ROLLBACK");return error(res,400,"Número inválido")}
-const person=await client.query("insert into participants(full_name,phone_e164,social_network,social_handle) values($1,$2,$3,$4) on conflict(phone_e164) do update set full_name=excluded.full_name,social_network=excluded.social_network,social_handle=excluded.social_handle returning id",[name,normalized,String(socialNetwork||"").trim()||null,String(socialHandle||"").trim()||null]);
-for(const n of numbers){const r=await client.query("insert into entries(campaign_id,participant_id,number) values($1,$2,$3) on conflict do nothing returning id",[req.params.id,person.rows[0].id,n]);if(!r.rowCount){await client.query("ROLLBACK");return error(res,409,"Número indisponível. Atualize a grade.")}}
-await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,details) values($1,$2,$3,$4,$5)",[person.rows[0].id,"entries.created","campaign",req.params.id,JSON.stringify({numbers})]);
-await client.query("COMMIT");res.status(201).json({participantId:person.rows[0].id,numbers,paymentRequired:false});
+const participantId=req.participant.participant_id;
+await client.query("update participants set social_network=$2,social_handle=$3 where id=$1",[participantId,String(socialNetwork||"").trim()||null,String(socialHandle||"").trim()||null]);
+for(const n of numbers){const r=await client.query("insert into entries(campaign_id,participant_id,number) values($1,$2,$3) on conflict do nothing returning id",[req.params.id,participantId,n]);if(!r.rowCount){await client.query("ROLLBACK");return error(res,409,"Número indisponível. Atualize a grade.")}}
+await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,details) values($1,$2,$3,$4,$5)",[participantId,"entries.created","campaign",req.params.id,JSON.stringify({numbers})]);
+await client.query("COMMIT");res.status(201).json({participantId:participantId,numbers,paymentRequired:false});
 }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
 });
 app.post("/api/admin/organizers",auth,async(req,res,next)=>{
