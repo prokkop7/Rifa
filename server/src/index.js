@@ -47,6 +47,11 @@ await client.query("insert into audit_log(actor_id,action,entity_type,entity_id,
 await client.query("COMMIT");res.status(201).json({participantId:person.rows[0].id,numbers,paymentRequired:false});
 }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}finally{client.release()}
 });
+app.post("/api/admin/organizers",auth,async(req,res,next)=>{
+const {ownerUserId,displayName}=req.body||{};
+if(!uuid(ownerUserId)||typeof displayName!=="string"||displayName.trim().length<3||displayName.length>120)return error(res,400,"Dados inválidos");
+try{const r=await pool.query("insert into organizers(owner_user_id,display_name) values($1,$2) returning id,display_name",[ownerUserId,displayName.trim()]);res.status(201).json(r.rows[0])}catch(e){next(e)}
+});
 app.post("/api/admin/campaigns",auth,async(req,res,next)=>{const {organizerId,title,description,kind,numberCount}=req.body||{};
 if(!uuid(organizerId)||typeof title!=="string"||title.trim().length<4||title.length>150||!["demo","authorized_free_promotion","authorized_osc"].includes(kind)||!Number.isInteger(numberCount)||numberCount<1||numberCount>100000)return error(res,400,"Dados inválidos");
 try{const r=await pool.query("insert into campaigns(organizer_id,title,description,kind,number_count) values($1,$2,$3,$4,$5) returning id,status",[organizerId,title.trim(),String(description||"").slice(0,4000),kind,numberCount]);res.status(201).json(r.rows[0])}catch(e){next(e)}});
