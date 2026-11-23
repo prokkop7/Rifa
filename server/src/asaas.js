@@ -27,6 +27,14 @@ export async function verifyAsaasConnection(apiKeyOverride){
   try {await request("/myAccount/status/",{},apiKeyOverride);return {configured:true,connected:true,environment:"sandbox"}}
   catch(e){return {configured:true,connected:false,environment:"sandbox",httpStatus:e.status||null}}
 }
+// Diagnostic-only: test production credentials without creating any charge.
+export async function verifyAsaasProductionConnection(apiKey){
+ if(typeof apiKey!=="string"||!apiKey)return {configured:false,connected:false,environment:"production"};
+ try{
+  const response=await fetch("https://api.asaas.com/v3/myAccount/status/",{headers:{"accept":"application/json","access_token":apiKey,"User-Agent":"AcoesPlatform/0.3.0"},signal:AbortSignal.timeout(12000)});
+  return {configured:true,connected:response.ok,environment:"production",...(response.ok?{}:{httpStatus:response.status})};
+ }catch{return {configured:true,connected:false,environment:"production"}}
+}
 export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl,apiKey}){
  if(!/^[a-zA-Z0-9-]{12,200}$/.test(externalReference))throw Error("Invalid order reference");
  if(typeof title!=="string"||title.trim().length<4||title.length>120)throw Error("Invalid order title");
