@@ -28,3 +28,14 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - O banco exige políticas adicionais e revisão de proteção de dados para operação real.
 - A publicação de campanhas requer documentação e verificação jurídica e operacional independente.
 - Nunca coloque ADMIN_API_KEY ou credenciais do banco no frontend.
+
+
+## Frontend conectado
+- Abra `app.html` servindo os arquivos por HTTP(S), não como `file://`.
+- A aplicação consulta `/api/campaigns` e utiliza `?campaign=UUID` para selecionar uma campanha específica.
+- Se o frontend estiver em outro domínio, defina `window.ACOES_API_URL="https://seu-backend.example"` em `config.js`. Use o domínio real e HTTPS.
+- Inclua a origem exata do frontend na variável `APP_ORIGIN` do backend, separando origens por vírgula.
+- Antes de existir uma campanha publicada e autorizada, a interface exibirá **Campanha indisponível**. Isto é o comportamento esperado.
+- Atualmente a interface de produção **não** mostra fotos reais; os prêmios vêm da tabela `prizes` e ainda não existe upload de imagens.
+- O retorno de `participantId` não é uma credencial de acesso. É necessário implementar identidade verificada, sessão segura e histórico privado antes de liberar a área do participante.
+- O código não deve ser considerado pronto para internet pública sem testes, revisão da conformidade da promoção e proteção contra abuso, inclusive verificação de identidade e limites por participante.
