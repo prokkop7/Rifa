@@ -18,17 +18,18 @@
 <button type="button" class="dashboard-tile" data-go-page="pix"><span class="tile-icon" aria-hidden="true">▦</span><strong>Pix Sandbox</strong><span>Cobranças de demonstração e conciliação</span></button>
 <button type="button" class="dashboard-tile" data-go-page="asaas"><span class="tile-icon" aria-hidden="true">⚙</span><strong>Ambiente Asaas</strong><span>Selecionar Sandbox ou Produção e verificar credenciais</span></button>
 </div>
-<div class="admin-info-row"><div><strong>Ambiente preferido</strong><span id="dashboardEnvironment">Sandbox</span></div><div><strong>Pagamentos reais</strong><span>Desativados</span></div></div>
-<p class="help">Selecionar Produção configura a preferência e permite validar credenciais; não habilita a cobrança real nem compras de números.</p>
+<div class="admin-info-row"><div><strong>Ambiente preferido</strong><span id="dashboardEnvironment">Sandbox</span></div><div><strong>Checkout comercial</strong><span id="dashboardCheckoutMode">Sandbox</span></div></div>
+<p class="help">Selecionar Produção passa a valer para novos checkouts de produtos e serviços. Nenhum pagamento real é disparado pela simples mudança da opção.</p>
 </section>
-<section class="panel" id="asaasSettingsPanel" data-panel-page="asaas"><h1>Ambientes do Asaas</h1><p class="sub">Cadastre as credenciais dos dois ambientes de forma independente. Nenhuma cobrança real será ativada apenas por selecionar Produção.</p>
+<section class="panel" id="asaasSettingsPanel" data-panel-page="asaas"><h1>Ambientes do Asaas</h1><p class="sub">Cadastre as credenciais dos dois ambientes de forma independente. O ambiente selecionado determina onde os checkouts comerciais independentes de produtos e serviços serão emitidos, depois de configuradas suas credenciais.</p>
 <div class="status-row"><span>Conexão do ambiente em configuração</span><strong id="connection">Não verificada</strong></div>
 <form id="loginForm" autocomplete="off"><label for="loginEmail">E-mail administrativo</label><input id="loginEmail" type="email" value="wr.life10@gmail.com" required autocomplete="username"><label for="loginPassword">Senha</label><input id="loginPassword" type="password" minlength="6" required autocomplete="current-password"><div class="actions"><button class="primary" type="submit">Entrar</button></div></form><div id="secureSettings" hidden><div class="actions"><button type="button" class="outline" id="logout">Sair da administração</button></div><p class="help">Escolha qual ambiente deseja <strong>configurar e consultar</strong>:</p><div class="environment-tabs" role="group" aria-label="Ambiente Asaas">
 <button type="button" id="tabSandbox" class="env-tab selected" aria-pressed="true" data-environment="sandbox">Sandbox</button>
 <button type="button" id="tabProduction" class="env-tab" aria-pressed="false" data-environment="production">Produção</button></div>
-<div class="status-row"><span>Preferência de ambiente salva</span><strong id="activeEnvironment">Sandbox</strong></div><div class="status-row"><span>Cobranças reais e compra de números</span><strong>Desativadas</strong></div>
+<div class="status-row"><span>Preferência de ambiente salva</span><strong id="activeEnvironment">Sandbox</strong></div><div class="status-row"><span>Checkout comercial de Produto / Serviço</span><strong id="commercialEnvironment">Sandbox</strong></div>
+<div class="status-row"><span>Compra de números de sorteios</span><strong>Não habilitada</strong></div>
 <button type="button" class="outline" id="setActive">Definir ambiente exibido como ativo</button>
-<p class="help">O seletor salva sua preferência. Cobranças reais continuam bloqueadas até habilitação operacional.</p>
+<p class="help">Ao selecionar Produção, novos checkouts comerciais de produtos e serviços usarão a API de Produção. Reservas e números de sorteios não são cobrados.</p>
 <form id="configForm" autocomplete="off">
 
 <label for="apiKey"><span id="keyEnvironmentLabel">Chave de API Asaas Sandbox</span></label><input id="apiKey" type="password" required autocomplete="off" spellcheck="false" placeholder="$aact_...">
@@ -98,7 +99,7 @@
 <p id="actionMessage" role="status" aria-live="polite"></p>
 <div id="actionList" class="action-list" aria-live="polite"></div>
 </section>
-<section class="panel compact" data-panel-page="security" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure esta URL na conta correspondente ao ambiente quando os webhooks estiverem habilitados. No momento, o webhook operacional continua restrito ao Sandbox.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
+<section class="panel compact" data-panel-page="security" data-auth-only hidden><h2>Webhook do Asaas</h2><p>Configure a URL do ambiente selecionado na conta correspondente do Asaas. Cada ambiente usa seu próprio token de autenticação; confira os eventos de checkout.</p><div class="endpoint" id="webhookUrl"></div><button type="button" id="copyUrl" class="outline">Copiar endereço</button></section>
 <section class="panel compact" data-panel-page="security" data-auth-only hidden><h2>Gerenciamento das credenciais</h2><p>Exclui as credenciais salvas no servidor. Não cancela pedidos já criados.</p><button class="danger" id="remove" type="button">Desconectar ambiente exibido</button></section>
-<footer>Gestão AÇÕES · Credenciais independentes por ambiente · Compras e cobranças de produção desativadas.</footer>
+<footer>Gestão AÇÕES · Checkout comercial conforme ambiente ativo · Números de sorteio sem cobrança.</footer>
 </main><script src="/admin/asaas/app.js" defer></script></body></html>
