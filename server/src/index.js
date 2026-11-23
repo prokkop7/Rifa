@@ -7,6 +7,8 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import {timingSafeEqual,randomBytes,createHash,randomUUID,scrypt as scryptCallback} from "node:crypto";
 import {promisify} from "node:util";
+import {fileURLToPath} from "node:url";
+import {getAsaasSettings,saveAsaasSettings,deleteAsaasSettings,validateAsaasSandboxSettings} from "./asaas-settings.js";
 const scrypt=promisify(scryptCallback);
 
 const required=["DATABASE_URL","APP_ORIGIN","ADMIN_API_KEY"];
@@ -163,9 +165,41 @@ try{const r=await pool.query("insert into campaigns(organizer_id,title,descripti
 /* Staging-only system administrator endpoints. Do not expose the master API key to a browser. */
 
 // Admin-only Asaas sandbox connection diagnostic. Does not initiate charges.
-app.get("/api/admin/asaas/status",auth,async(req,res,next)=>{
- try{res.json(await verifyAsaasConnection())}
- catch(e){next(e)}
+const sandboxUiEnabled=process.env.ASAAS_SETTINGS_UI_ENABLED==="true";
+function requireSecureAdminSetup(req,res,next){
+ if(!sandboxUiEnabled)return error(res,404,"Not found");
+ // The backend must be reached over TLS, except local development.
+ if(!req.secure&&!["localhost","127.0.0.1"].includes(req.hostname))return error(res,403,"HTTPS required");
+ res.set("Cache-Control","no-store");
+ next();
+}
+for(const [route,file,type] of [
+ ["/admin/asaas","../private/asaas.html","text/html"],
+ ["/admin/asaas/styles.css","../private/asaas.css","text/css"],
+ ["/admin/asaas/app.js","../private/asaas.js","application/javascript"]
+]){
+ app.get(route,requireSecureAdminSetup,(req,res)=>res.type(type).sendFile(fileURLToPath(new URL(file,import.meta.url))));
+}
+app.get("/api/admin/asaas/status",requireSecureAdminSetup,auth,async(req,res,next)=>{
+ try{
+  const creds=await getAsaasSettings(pool);
+  if(!creds)return res.json({configured:false,connected:false,environment:"sandbox"});
+  const result=await verifyAsaasConnection(creds.apiKey);
+  res.json({...result,updatedAt:creds.updatedAt});
+ }catch(e){next(e)}
+});
+app.post("/api/admin/asaas/config",requireSecureAdminSetup,auth,async(req,res,next)=>{
+ const issue=validateAsaasSandboxSettings(req.body);
+ if(issue)return error(res,400,issue);
+ try{
+   const result=await verifyAsaasConnection(req.body.apiKey);
+   if(!result.connected)return error(res,422,"Chave não validada no Sandbox. Verifique a chave e a conta.");
+   const saved=await saveAsaasSettings(pool,{apiKey:req.body.apiKey,webhookToken:req.body.webhookToken});
+   res.status(201).json({...saved,connected:true});
+ }catch(e){next(e)}
+});
+app.delete("/api/admin/asaas/config",requireSecureAdminSetup,auth,async(req,res,next)=>{
+ try{res.json(await deleteAsaasSettings(pool))}catch(e){next(e)}
 });
 // Receive commercial payment events only; never allocate campaign numbers via payment events.
 // Only a staging administrator can create a standalone commercial sale checkout.
@@ -212,7 +246,9 @@ app.get("/api/admin/commercial-orders/:id",auth,async(req,res,next)=>{
 // Persist Asaas webhook events using provider IDs for idempotency.
 // Only CHECKOUT_PAID updates a commercial order, never raffle numbers.
 app.post("/api/webhooks/asaas",async(req,res,next)=>{
- if(!verifyAsaasWebhookToken(req.get("asaas-access-token")))return error(res,401,"Not authorized");
+ let providerSettings;
+ try{providerSettings=await getAsaasSettings(pool)}catch(e){return next(e)}
+ if(!providerSettings||!verifyAsaasWebhookToken(req.get("asaas-access-token"),providerSettings.webhookToken))return error(res,401,"Not authorized");
  const evt=req.body;
  if(!evt||typeof evt.id!=="string"||evt.id.length>200||typeof evt.event!=="string"||evt.event.length>100)
    return error(res,400,"Invalid event");
