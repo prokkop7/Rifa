@@ -71,6 +71,15 @@ export async function createSandboxPixPayment({customer,externalReference,apiKey
  if(typeof data?.id!=="string"||!/^pay_[a-zA-Z0-9_]{4,100}$/.test(data.id))throw Error("Asaas returned unexpected payment id");
  return {paymentId:data.id,status:data.status};
 }
+// Read-only reconciliation: never creates a new payment.
+export async function findSandboxPixPaymentsByReference(externalReference,apiKey){
+ if(typeof externalReference!=="string"||!/^[0-9a-f-]{36}$/i.test(externalReference))throw Error("Invalid order reference");
+ const data=await request("/payments?externalReference="+encodeURIComponent(externalReference)+"&limit=20",{},apiKey);
+ if(!Array.isArray(data?.data))throw Error("Invalid payment search response");
+ return data.data.filter(p=>p?.externalReference===externalReference &&
+  typeof p.id==="string"&&/^pay_[A-Za-z0-9_]{4,100}$/.test(p.id))
+  .map(p=>({id:p.id,status:p.status,externalReference:p.externalReference,value:p.value,billingType:p.billingType}));
+}
 export async function getSandboxPixQr(paymentId,apiKey){
  if(!/^pay_[a-zA-Z0-9_]{4,100}$/.test(paymentId))throw Error("Invalid payment id");
  const data=await request("/payments/"+encodeURIComponent(paymentId)+"/pixQrCode",{},apiKey);
