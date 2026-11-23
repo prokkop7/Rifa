@@ -31,7 +31,7 @@ export async function saveAsaasSettings(pool,{apiKey,webhookToken},environment="
  return {configured:true,environment,updatedAt:r.rows[0].updated_at};
 }
 export async function deleteAsaasSettings(pool,environment="sandbox"){
- await pool.query("delete from payment_provider_settings where id=$1",[PROVIDER_ID]);
+ await pool.query("delete from payment_provider_settings where id=$1",[providerId(environment)]);
  return {configured:false,environment};
 }
 export function validateAsaasSettings(payload,environment="sandbox"){
