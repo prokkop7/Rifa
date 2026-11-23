@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import pg from "pg";
-import {verifyAsaasConnection,verifyAsaasWebhookToken} from "./asaas.js";
+import {verifyAsaasConnection,verifyAsaasWebhookToken,createCommercialCheckout} from "./asaas.js";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -168,19 +168,81 @@ app.get("/api/admin/asaas/status",auth,async(req,res,next)=>{
  catch(e){next(e)}
 });
 // Receive commercial payment events only; never allocate campaign numbers via payment events.
-app.post("/api/webhooks/asaas",async(req,res,next)=>{
- if(!verifyAsaasWebhookToken(req.get("asaas-access-token")))return error(res,401,"Not authorized");
- const event=req.body;
- if(!event||typeof event.id!=="string"||event.id.length>200||typeof event.event!=="string"||!event.payment||typeof event.payment.id!=="string")return error(res,400,"Invalid event");
+// Only a staging administrator can create a standalone commercial sale checkout.
+// There is intentionally no route from campaign numbers to this API.
+app.post("/api/admin/commercial-checkouts",auth,async(req,res,next)=>{
+ const {organizerId,description,amountCents}=req.body||{};
+ if(!uuid(organizerId)||typeof description!=="string"||description.trim().length<4||
+   description.trim().length>120||!Number.isSafeInteger(amountCents)||amountCents<100||amountCents>100000000)
+   return error(res,400,"Dados comerciais inválidos");
+ const {COMMERCIAL_CHECKOUT_RETURN_BASE:base}=process.env;
+ if(!base||!/^https:\/\//.test(base))return error(res,503,"Callback HTTPS não configurado");
+ let orderId=null;
  try{
-  const paymentId=event.payment.id;
-  await pool.query(`insert into payment_events(provider,provider_event_id,commercial_order_id,payload)
-  values('asaas',$1,(select id from commercial_orders where provider_payment_id=$2),$3)
-  on conflict (provider,provider_event_id) do nothing`,[event.id,paymentId,JSON.stringify(event)]);
-  res.status(200).json({received:true});
+  const result=await pool.query("insert into commercial_orders(organizer_id,description,amount_cents,external_reference,provider,status) select id,$2,$3,$4,'asaas','created' from organizers where id=$1 returning id,external_reference",[
+   organizerId,description.trim(),amountCents,randomUUID()
+  ]);
+  if(!result.rowCount)return error(res,404,"Organizador inexistente");
+  orderId=result.rows[0].id;
+  const externalReference=result.rows[0].external_reference;
+  const back=base.replace(/\/$/,"");
+  const callbacks={
+    successUrl:back+"/?checkoutReturn=success&order="+encodeURIComponent(orderId),
+    cancelUrl:back+"/?checkoutReturn=cancel&order="+encodeURIComponent(orderId),
+    expiredUrl:back+"/?checkoutReturn=expired&order="+encodeURIComponent(orderId)
+  };
+  const checkout=await createCommercialCheckout({externalReference,title:description.trim(),amountCents,...callbacks});
+  await pool.query("update commercial_orders set provider_checkout_id=$2,status='pending' where id=$1",[orderId,checkout.checkoutId]);
+  res.status(201).json({orderId,checkoutUrl:checkout.checkoutUrl,checkoutId:checkout.checkoutId,environment:"sandbox",paid:false});
+ }catch(e){
+  // A provider checkout may have been created before persistence failed.
+  // Such orders require manual reconciliation; do not blindly retry.
+  console.error("Asaas checkout setup failed",e.status||e.message,orderId);
+  next(e);
+ }
+});
+app.get("/api/admin/commercial-orders/:id",auth,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Invalid id");
+ try{
+  const r=await pool.query("select id,description,amount_cents,status,provider_checkout_id,created_at,paid_at from commercial_orders where id=$1",[req.params.id]);
+  if(!r.rowCount)return error(res,404,"Order not found");
+  res.json({order:r.rows[0]});
  }catch(e){next(e)}
 });
-
+// Persist Asaas webhook events using provider IDs for idempotency.
+// Only CHECKOUT_PAID updates a commercial order, never raffle numbers.
+app.post("/api/webhooks/asaas",async(req,res,next)=>{
+ if(!verifyAsaasWebhookToken(req.get("asaas-access-token")))return error(res,401,"Not authorized");
+ const evt=req.body;
+ if(!evt||typeof evt.id!=="string"||evt.id.length>200||typeof evt.event!=="string"||evt.event.length>100)
+   return error(res,400,"Invalid event");
+ const checkoutId=evt.checkout?.id;
+ const paymentId=evt.payment?.id;
+ if((!checkoutId||typeof checkoutId!=="string")&&(!paymentId||typeof paymentId!=="string"))
+   return error(res,400,"Event has no payment or checkout id");
+ const client=await pool.connect();
+ try{
+   await client.query("BEGIN");
+   const orderQuery=checkoutId?
+    "select id from commercial_orders where provider_checkout_id=$1 for update":
+    "select id from commercial_orders where provider_payment_id=$1 for update";
+   const found=await client.query(orderQuery,[checkoutId||paymentId]);
+   // Unknown events are saved and acknowledged; never grant access or entries.
+   const id=found.rows[0]?.id||null;
+   const inserted=await client.query(
+    "insert into payment_events(provider,provider_event_id,commercial_order_id,payload) values('asaas',$1,$2,$3) on conflict(provider,provider_event_id) do nothing returning id",
+    [evt.id,id,JSON.stringify(evt)]);
+   if(inserted.rowCount&&id){
+     const paid=evt.event==="CHECKOUT_PAID";
+     const failed=evt.event==="CHECKOUT_CANCELED"||evt.event==="CHECKOUT_EXPIRED";
+     if(paid)await client.query("update commercial_orders set status='paid',paid_at=coalesce(paid_at,now()) where id=$1 and status not in ('refunded')",[id]);
+     else if(failed)await client.query("update commercial_orders set status='cancelled' where id=$1 and status in ('created','pending')",[id]);
+   }
+   await client.query("COMMIT");
+   res.json({received:true});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
+ finally{client.release()}
+});
 app.get("/api/admin/overview",auth,async(req,res,next)=>{
  try{
   const [organizers,campaigns,participants,entries]=await Promise.all([
