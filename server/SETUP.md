@@ -63,3 +63,10 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Um prêmio só pode ser adicionado a campanha em `draft`. Não existe função de publicação/sorteio/cobrança nesta etapa.
 - O SQL de instalação nova foi corrigido para remover bloco duplicado e restaurar a validação do telefone. Bancos já existentes precisam de migrações específicas; não recrie tabelas.
 - **Código escrito e conferido no GitHub; execução contra PostgreSQL e testes de integração ainda não realizados.**
+
+## Publicação da demonstração no GitHub Pages
+- O site de demonstração pública fica em `docs/index.html` e funciona sem backend, sem cobrança e sem inscrições reais.
+- Em GitHub > Settings > Pages, selecione `Deploy from a branch`, `main` e `/docs` e salve.
+- Depois que o GitHub indicar publicação concluída, confira a URL fornecida pelo próprio GitHub Pages. Para este projeto, o endereço esperado é `https://prokkop7.github.io/Rifa/`; não é uma confirmação de que já esteja publicado.
+- Não selecione `/ (root)`: a raiz contém o painel de homologação e arquivos de integração que não devem ser tratados como produção.
+- GitHub Pages só publica arquivos estáticos. API Node.js, PostgreSQL, autenticação e integração Asaas exigem hospedagem backend separada.
