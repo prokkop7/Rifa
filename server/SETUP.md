@@ -96,3 +96,12 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Configure o webhook apenas depois de hospedar o backend em HTTPS. Os eventos não devem ser tratados como comprovante de pagamento sem conciliação.
 - Produção, criação de cobrança, conversão de moeda e vinculação da campanha não estão ativadas. Confirme elegibilidade da conta e aprovação do Asaas para o negócio/país.
 - Use credenciais distintas para Sandbox e produção. A chave de API nunca deve ser colada no chat ou gravada no código público.
+
+
+## Checkout visual / regulamentação UK (2026-11)
+- A página pública `docs/index.html` oferece o botão **Comprar**, que abre uma janela de resumo dentro do aplicativo. O modal exibe números, quantidade e valor, mas **não cobra e não gera participações**.
+- Para campanha de sorteio comercial no Reino Unido com pagamento e premiação por acaso, é necessário classificar e implementar legalmente a modalidade; um sorteio comercial com entrada paga e sem rota gratuita genuína pode configurar loteria proibida. Alternativas incluem free draw com rotas paga e gratuita equivalentes ou competição genuína de habilidade. Revisar com assessoria jurídica britânica.
+- O Asaas Checkout documentado atualmente é **hospedado e redirecionado**, não há garantia de que funcione embutido em iframe; nunca hospedar formulários de cartão sem integração segura.
+- O Asaas Checkout aceita `minutesToExpire` entre **10 e 1440 minutos**, enquanto o projeto planeja reserva local de **3 minutos**. É indispensável definir estratégia transacional para pagamentos tardios, expiração do bloqueio e reembolso; nunca confirmar um número após liberação e venda a outra pessoa.
+- A finalização financeira não pode ser ativada somente alterando um botão. Requer backend público HTTPS, chaves privadas da conta autorizada, verificação de webhooks, ambiente de testes, aprovação do processador para a categoria e conformidade do free-entry flow.
+- Fonte: https://docs.asaas.com/reference/criar-novo-checkout ; https://www.gamblingcommission.gov.uk/public-and-players/guide/page/free-draws-and-prize-competitions/
