@@ -11,7 +11,7 @@ async function call(method,path,body){
  if(!response.ok){if(response.status===401&&path!=="/api/admin/asaas/login"&&path!=="/api/admin/asaas/session"){signedIn(false);$("#loginForm").scrollIntoView({behavior:"smooth",block:"center"});status("Sua sessão administrativa expirou. Entre novamente para continuar.");}throw Error(response.status===401&&path!=="/api/admin/asaas/login"?"Sessão encerrada. Faça login novamente.":result.error||"Erro HTTP "+response.status)}
  return result;
 }
-async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions()}catch{signedIn(false)}}
+async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions();await refreshPixLedger()}catch{signedIn(false)}}
 function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="ATIVO: "+activeEnvironment.toUpperCase();$("#apiKey").value="";$("#webhookToken").value="";}
 async function runCheck(){
  const button=$("#check");button.disabled=true;
@@ -97,6 +97,40 @@ $("#pixCopy").addEventListener("click",async()=>{
  catch{pixNotice("Não foi possível copiar. Selecione o código acima.")}
 });
 $("#pixRefresh").addEventListener("click",pollPix);
+
+// Pix Sandbox: read existing payments only, never issue a new charge from this list.
+const ledgerStatuses={created:"Criado",pending:"Pendente",paid:"Confirmado",cancelled:"Cancelado",failed:"Falha",refunded:"Estornado"};
+const ledgerMessage=msg=>{$("#pixLedgerMessage").textContent=msg};
+async function refreshPixLedger(){
+ const target=$("#pixLedgerList"),button=$("#pixLedgerRefresh");button.disabled=true;
+ try{
+  const result=await call("GET","/api/admin/pix-demo/orders");
+  target.replaceChildren();
+  if(!result.orders.length)ledgerMessage("Nenhuma cobrança Sandbox registrada.");
+  else ledgerMessage(result.orders.length+" cobrança(s) de teste encontrada(s).");
+  for(const order of result.orders){
+   const row=document.createElement("div");row.className="pix-ledger-row";
+   const title=document.createElement("strong");title.textContent=ledgerStatuses[order.status]||order.status;
+   const info=document.createElement("small");
+   info.textContent=new Date(order.created_at).toLocaleString("pt-BR")+
+    " · "+(Number(order.amount_cents)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})+
+    " · "+String(order.id).slice(0,8)+"…";
+   const actions=document.createElement("div");actions.className="action-buttons";
+   const reconcile=document.createElement("button");reconcile.className="outline";reconcile.type="button";reconcile.textContent="Conciliar";
+   reconcile.addEventListener("click",async()=>{
+    reconcile.disabled=true;
+    try{
+     const r=await call("POST","/api/admin/pix-demo/"+encodeURIComponent(order.id)+"/reconcile",{});
+     ledgerMessage("Pedido conciliado: "+(ledgerStatuses[r.status]||r.status)+". Nenhuma cobrança foi criada.");
+     await refreshPixLedger();
+    }catch(e){ledgerMessage("Conciliação: "+e.message)}finally{reconcile.disabled=false}
+   });
+   actions.append(reconcile);
+   row.append(title,info,actions);target.append(row);
+  }
+ }catch(e){ledgerMessage(e.message)}finally{button.disabled=false}
+}
+$("#pixLedgerRefresh").addEventListener("click",refreshPixLedger);
 
 const PUBLIC_ACTION_URL="https://prokkop7.github.io/Rifa/?acao=";
 const actionList=$("#actionList");
