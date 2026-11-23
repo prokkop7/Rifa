@@ -338,17 +338,17 @@ app.get("/api/admin/organizers",auth,async(req,res,next)=>{
  try{const r=await pool.query("select id,display_name,created_at from organizers order by created_at desc limit 100");res.json({organizers:r.rows})}catch(e){next(e)}
 });
 app.get("/api/admin/campaigns",auth,async(req,res,next)=>{
- try{const r=await pool.query(\`select c.id,c.title,c.description,c.kind,c.status,c.number_count,c.created_at,o.display_name as organizer,
+ try{const r=await pool.query(`select c.id,c.title,c.description,c.kind,c.status,c.number_count,c.created_at,o.display_name as organizer,
  (select count(*)::int from entries e where e.campaign_id=c.id) as occupied,
  (select count(*)::int from prizes p where p.campaign_id=c.id) as prize_count
- from campaigns c join organizers o on o.id=c.organizer_id order by c.created_at desc limit 200\`);
+ from campaigns c join organizers o on o.id=c.organizer_id order by c.created_at desc limit 200`);
  res.json({campaigns:r.rows})}catch(e){next(e)}
 });
 app.get("/api/admin/campaigns/:id/entries",auth,async(req,res,next)=>{
  if(!uuid(req.params.id))return error(res,400,"ID inválido");
  try{
-  const r=await pool.query(\`select e.id,e.number,e.created_at,p.full_name,p.phone_e164,p.social_network,p.social_handle
-   from entries e join participants p on p.id=e.participant_id where e.campaign_id=$1 order by e.number limit 100000\`,[req.params.id]);
+  const r=await pool.query(`select e.id,e.number,e.created_at,p.full_name,p.phone_e164,p.social_network,p.social_handle
+   from entries e join participants p on p.id=e.participant_id where e.campaign_id=$1 order by e.number limit 100000`,[req.params.id]);
   res.json({entries:r.rows});
  }catch(e){next(e)}
 });
@@ -358,9 +358,9 @@ app.post("/api/admin/campaigns/:id/prizes",auth,async(req,res,next)=>{
  if(typeof label!=="string"||label.trim().length<2||label.length>120||String(specs||"").length>1000||!Number.isInteger(position)||position<1||position>50)return error(res,400,"Dados inválidos");
  if(imageUrl&&(!/^https:\/\/[a-z0-9.-]+\/\S+$/i.test(imageUrl)||String(imageUrl).length>2000))return error(res,400,"URL de imagem inválida");
  try{
-  const r=await pool.query(\`insert into prizes(campaign_id,label,specs,position,image_url)
+  const r=await pool.query(`insert into prizes(campaign_id,label,specs,position,image_url)
    select id,$2,$3,$4,$5 from campaigns where id=$1 and status='draft'
-   returning id,label,specs,position,image_url\`,[req.params.id,label.trim(),String(specs||"").trim(),position,imageUrl||null]);
+   returning id,label,specs,position,image_url`,[req.params.id,label.trim(),String(specs||"").trim(),position,imageUrl||null]);
   if(!r.rowCount)return error(res,409,"Campanha não encontrada ou não está em rascunho");
   res.status(201).json({prize:r.rows[0]});
  }catch(e){if(e.code==="23505")return error(res,409,"Já existe prêmio nessa posição");next(e)}
