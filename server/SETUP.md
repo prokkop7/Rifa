@@ -105,3 +105,17 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - O Asaas Checkout aceita `minutesToExpire` entre **10 e 1440 minutos**, enquanto o projeto planeja reserva local de **3 minutos**. É indispensável definir estratégia transacional para pagamentos tardios, expiração do bloqueio e reembolso; nunca confirmar um número após liberação e venda a outra pessoa.
 - A finalização financeira não pode ser ativada somente alterando um botão. Requer backend público HTTPS, chaves privadas da conta autorizada, verificação de webhooks, ambiente de testes, aprovação do processador para a categoria e conformidade do free-entry flow.
 - Fonte: https://docs.asaas.com/reference/criar-novo-checkout ; https://www.gamblingcommission.gov.uk/public-and-players/guide/page/free-draws-and-prize-competitions/
+
+
+## Etapa Asaas — Checkout sandbox comercial (23/11/2026)
+- Nova API `POST /api/admin/commercial-checkouts` (Bearer ADMIN_API_KEY, JSON com `organizerId`, `description`, `amountCents`): cria pedido comercial separado e solicita um Checkout Asaas em Sandbox. Retorna `checkoutUrl`, `checkoutId`, `orderId`. **Não compre números ou participações com esta API.**
+- Nova consulta `GET /api/admin/commercial-orders/:id` (mesma autenticação) para acompanhamento do pedido comercial.
+- Migração `database/003_asaas_checkout.sql` adiciona `provider_checkout_id` com índice único. Aplicar em instâncias existentes com backup antes de executar esses endpoints.
+- `POST /api/webhooks/asaas` agora admite eventos `CHECKOUT_PAID`, `CHECKOUT_CANCELED` e `CHECKOUT_EXPIRED`, verifica token, persiste ID único e atualiza somente `commercial_orders`. Não atribui números de campanhas.
+- `server/test/asaas.mjs` contém testes com `fetch` simulado, sem chamadas ou cobranças reais, integrados ao workflow de verificação.
+- Configure no backend `ASAAS_ENV=sandbox`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN` com pelo menos 32 caracteres, `COMMERCIAL_CHECKOUT_RETURN_BASE` com HTTPS, `DATABASE_URL` e `ADMIN_API_KEY`. Nunca coloque segredos no repositório ou navegador.
+- O checkout hospedado Asaas **redireciona** o cliente à URL do Asaas; não é embutido por iframe garantido. O link de retorno não confirma o pagamento: apenas o webhook validado.
+- Asaas Checkout: `minutesToExpire` mínimo de 10 minutos. **É incompatível com promessa automática de liberação aos 3 minutos** sem reconciliação, cancelamento e tratamento de pagamento tardio.
+- Segundo o suporte do Asaas (23/09/2026), pagamentos internacionais necessitam aprovação prévia, não aceitam Pix, boleto e links de pagamento e são feitos por cartão internacional. Verifique expressamente se o produto Checkout é admitido nessa modalidade.
+- O Reino Unido exige qualificação legal de free draw, incluindo via gratuita real com destaque e condições adequadas, ou outra modalidade permitida. **Nenhum checkout público de números deve ser ativado** antes dessa validação e aprovação do adquirente.
+- Situação: código de sandbox enviado ao GitHub; nenhuma conta vinculada e nenhuma transação real executada.
