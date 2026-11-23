@@ -61,7 +61,7 @@ export async function createCommercialCheckout({externalReference,title,amountCe
   items:[{name:title.trim().slice(0,30),description:title.trim(),quantity:1,value:amountCents/100}]
  })},apiKey,environment);
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
- return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment};
+ return {checkoutId:data.id,checkoutUrl:(environment==="sandbox"?"https://sandbox.asaas.com/checkoutSession/show/":CHECKOUT_BASE)+encodeURIComponent(data.id),environment};
 }
 // Admin-only Sandbox Pix demonstration. Never connected to campaign entries.
 export async function createSandboxPixCustomer({name,cpfCnpj,mobilePhone,externalReference,apiKey}){
