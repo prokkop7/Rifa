@@ -1,0 +1,51 @@
+name: Verificar servidor e banco
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'database/**'
+      - '.github/workflows/check.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'database/**'
+      - '.github/workflows/check.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: acoes
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: acoes
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U acoes -d acoes"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://acoes:test_password@localhost:5432/acoes
+      DATABASE_SSL: 'false'
+      APP_ORIGIN: http://localhost:5500
+      ADMIN_API_KEY: ci_admin_secret_32_characters_minimum
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
+      - name: Syntax check
+        run: node --check server/src/index.js
+      - name: Initialize SQL and check API health
+        working-directory: server
+        run: node test/smoke.mjs
