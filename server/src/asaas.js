@@ -54,6 +54,35 @@ export async function createCommercialCheckout({externalReference,title,amountCe
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
  return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment:"sandbox"};
 }
+// Admin-only Sandbox Pix demonstration. Never connected to campaign entries.
+export async function createSandboxPixCustomer({name,cpfCnpj,mobilePhone,externalReference,apiKey}){
+ const data=await request("/customers",{method:"POST",body:JSON.stringify({
+  name,cpfCnpj,mobilePhone,externalReference,notificationDisabled:true
+ })},apiKey);
+ if(!/^cus_[a-zA-Z0-9]+$/.test(data?.id||""))throw Error("Asaas returned unexpected customer id");
+ return data.id;
+}
+export async function createSandboxPixPayment({customer,externalReference,apiKey}){
+ const dueDate=new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+ const data=await request("/payments",{method:"POST",body:JSON.stringify({
+  customer,billingType:"PIX",value:5,dueDate,
+  externalReference,description:"AÇÕES — demonstração técnica Pix Sandbox, sem participação em sorteio"
+ })},apiKey);
+ if(typeof data?.id!=="string"||!/^pay_[a-zA-Z0-9]+$/.test(data.id))throw Error("Asaas returned unexpected payment id");
+ return {paymentId:data.id,status:data.status};
+}
+export async function getSandboxPixQr(paymentId,apiKey){
+ if(!/^pay_[a-zA-Z0-9]+$/.test(paymentId))throw Error("Invalid payment id");
+ const data=await request("/payments/"+encodeURIComponent(paymentId)+"/pixQrCode",{},apiKey);
+ if(typeof data?.payload!=="string"||data.payload.length>3000||!/^[A-Za-z0-9+/=]+$/.test(data?.encodedImage||"")||data.encodedImage.length>300000)throw Error("Asaas returned invalid Pix QR data");
+ return {payload:data.payload,encodedImage:data.encodedImage,expirationDate:data.expirationDate||null};
+}
+export async function getSandboxPixPayment(paymentId,apiKey){
+ if(!/^pay_[a-zA-Z0-9]+$/.test(paymentId))throw Error("Invalid payment id");
+ const data=await request("/payments/"+encodeURIComponent(paymentId),{},apiKey);
+ return {status:data.status,id:data.id};
+}
+
 export function verifyAsaasWebhookToken(supplied,tokenOverride){
  const secret=tokenOverride||process.env.ASAAS_WEBHOOK_TOKEN;
  if(!secret||secret.length<32||typeof supplied!=="string")return false;
