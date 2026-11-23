@@ -358,6 +358,14 @@ $("#checkoutModeForm").addEventListener("submit",async e=>{
  }catch(err){checkoutNotice(err.message)}finally{button.disabled=false}
 });
 $("#checkoutModeRefresh").addEventListener("click",loadCheckoutMode);
+$("#rayaSendTest").addEventListener("click",async()=>{
+ const button=$("#rayaSendTest");button.disabled=true;
+ try{
+  const result=await call("POST","/api/admin/checkout-mode/test",{});
+  checkoutNotice(result.message||"A Raya aceitou o pedido de teste.",true);
+ }catch(e){checkoutNotice("Falha no envio de teste: "+e.message)}
+ finally{button.disabled=false}
+});
 function manualOrderMessage(message){$("#manualOrdersMessage").textContent=message}
 async function loadManualOrders(){
  try{
