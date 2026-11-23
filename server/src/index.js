@@ -187,6 +187,8 @@ async function sendManualRequestNotification(orderId){
    signal:AbortSignal.timeout(11000)
   });
   if(!response.ok)throw Error("Raya HTTP "+response.status);
+  const rayaResult=await response.json().catch(()=>null);
+  if(rayaResult?.success===false)throw Error("Raya declined the message");
   await pool.query(
    "update action_manual_requests set notification_status='sent',notification_sent_at=now(),notification_error=null,updated_at=now() where id=$1",[orderId]);
   return {attempted:true,accepted:true};
@@ -252,6 +254,8 @@ app.post("/api/admin/checkout-mode/test",requireSecureAdminSetup,sessionAdmin,ra
    }),signal:AbortSignal.timeout(11000)
   });
   if(!response.ok)return error(res,502,"Raya recusou a mensagem de teste (HTTP "+response.status+")");
+  const rayaResult=await response.json().catch(()=>null);
+  if(rayaResult?.success===false)return error(res,502,"Raya recusou a mensagem de teste");
   res.json({accepted:true,message:"A solicitação de envio foi aceita pela Raya. Confira o WhatsApp de destino."});
  }catch(e){console.error("Raya test failed",e.status||e.message);next(e)}
 });
