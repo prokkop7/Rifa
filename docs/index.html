@@ -84,6 +84,7 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 .action-catalog button{margin-top:8px}
 .action-hero{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:#f1f8f8;margin-bottom:12px}
 .legal-content p{line-height:1.7;font-size:13px;color:#526d77}
+.action-extra{background:#f5fbf9;border:1px solid #deece9;border-radius:12px;padding:12px;margin:12px 0;color:#45636e}.action-extra p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;font-size:13px;margin:8px 0 0}#actionRegulationLink{display:inline-block;margin:10px 0 13px;color:#167f74;text-underline-offset:3px}#actionRegulationLink[hidden]{display:none}
 </style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
@@ -131,7 +132,13 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 <div class="kicker" id="actionCategory">Ação</div><h1 class="headline" id="actionHeadline">Detalhes da ação</h1>
 <div class="glass"><img id="actionHero" class="action-hero" alt="" hidden><p class="lead" id="actionDescription">Conheça os detalhes.</p>
 <div class="sum"><span>Números previstos</span><strong id="actionTotal">—</strong></div>
-<div class="notice">Prévia informativa. Inscrições e compras de números não estão habilitadas para esta ação.</div>
+<div class="sum"><span>Valor previsto por número</span><strong id="actionPriceDisplay">—</strong></div>
+<div class="sum"><span>Limite por participante</span><strong id="actionMaxDisplay">—</strong></div>
+<div class="sum" id="actionDatesRow" hidden><span>Período previsto</span><strong id="actionDatesDisplay">—</strong></div>
+<div class="action-extra" id="actionPrizeBox" hidden><div class="label">Detalhes do prêmio</div><p id="actionPrizeDisplay"></p></div>
+<div class="action-extra" id="actionRulesBox" hidden><div class="label">Condições da ação</div><p id="actionRulesDisplay"></p></div>
+<a id="actionRegulationLink" href="#" rel="noopener noreferrer" target="_blank" hidden>Consultar regulamento completo</a>
+<div class="notice">Prévia de planejamento. Inscrições e compras de números não estão habilitadas nesta ação.</div>
 <button type="button" class="button secondary" data-tab="eventos" style="margin-top:12px">Voltar às ações</button></div>
 </section>
 <section id="termos" class="panel" aria-label="Termos de uso"><div class="kicker">Informações legais</div><h1 class="headline">Termos de uso</h1>
@@ -193,6 +200,21 @@ function showCatalogAction(a){
  $("#actionHeadline").textContent=a.title;
  $("#actionDescription").textContent=a.description||"Detalhes em preparação.";
  $("#actionTotal").textContent=String(a.number_count);
+ $("#actionPriceDisplay").textContent=((a.price_cents||0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+ $("#actionMaxDisplay").textContent=String(a.max_numbers_per_person||10);
+ $("#actionPrizeBox").hidden=!a.prize_details;
+ $("#actionPrizeDisplay").textContent=a.prize_details||"";
+ $("#actionRulesBox").hidden=!a.rules_text;
+ $("#actionRulesDisplay").textContent=a.rules_text||"";
+ const dates=[];
+ for(const key of ["starts_at","ends_at"]){
+  if(a[key])dates.push(new Date(a[key]).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}));
+ }
+ $("#actionDatesRow").hidden=!dates.length;
+ $("#actionDatesDisplay").textContent=dates.join(" — ");
+ const link=$("#actionRegulationLink");
+ link.hidden=!a.regulation_url;
+ if(a.regulation_url){link.href=a.regulation_url}else{link.removeAttribute("href")}
  const img=$("#actionHero");
  if(a.image_url&&a.image_url.startsWith("https://")){img.src=a.image_url;img.alt="Imagem da ação "+a.title;img.hidden=false}
  else{img.hidden=true;img.removeAttribute("src")}
