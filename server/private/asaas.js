@@ -70,16 +70,27 @@ $("#pixDemoForm").addEventListener("submit",async e=>{
  try{
   const r=await call("POST","/api/admin/pix-demo",{fullName:$("#pixName").value.trim(),phone:$("#pixPhone").value,cpf:$("#pixCpf").value});
   $("#pixCpf").value="";
+  showPixResult(r);
+  pixNotice("QR Code Sandbox criado. Nunca use dinheiro real nesta demonstração.",true);
+ }catch(err){pixNotice(err.message)}finally{button.disabled=false}
+});
+function showPixResult(r){
   pixOrderId=r.orderId;pixPayload=r.payload;
   $("#pixOrderId").textContent=r.orderId;
   $("#pixQr").src="data:image/png;base64,"+r.encodedImage;
   $("#pixPayload").value=r.payload;
-  $("#pixStatus").textContent="Aguardando Pix";
+  $("#pixStatus").textContent=r.status==="paid"?"Pagamento confirmado":"Aguardando Pix";
   $("#pixResult").hidden=false;
-  pixNotice("QR Code Sandbox criado. Nunca use dinheiro real nesta demonstração.",true);
   if(pixPoll)clearInterval(pixPoll);
-  pixPoll=setInterval(pollPix,10000);
- }catch(err){pixNotice(err.message)}finally{button.disabled=false}
+  if(r.status!=="paid")pixPoll=setInterval(pollPix,10000);
+}
+$("#pixRecover").addEventListener("click",async()=>{
+ const b=$("#pixRecover");b.disabled=true;
+ try{
+  const r=await call("GET","/api/admin/pix-demo/recent");
+  showPixResult(r);
+  pixNotice("Último Pix Sandbox recuperado, sem criar nova cobrança.",true);
+ }catch(e){pixNotice(e.message)}finally{b.disabled=false}
 });
 $("#pixCopy").addEventListener("click",async()=>{
  try{await navigator.clipboard.writeText(pixPayload);pixNotice("Código Pix copiado.",true)}
