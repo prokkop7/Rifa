@@ -49,7 +49,7 @@ export async function createCommercialCheckout({externalReference,title,amountCe
   minutesToExpire:10,
   externalReference,
   callback:{successUrl,cancelUrl,expiredUrl},
-  items:[{name:title.trim(),description:"Pedido comercial independente de qualquer sorteio",quantity:1,value:amountCents/100}]
+  items:[{name:title.trim().slice(0,30),description:title.trim(),quantity:1,value:amountCents/100}]
  })},apiKey);
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
  return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment:"sandbox"};
