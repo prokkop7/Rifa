@@ -16,6 +16,7 @@ services:
       - ./database/004_provider_settings.sql:/docker-entrypoint-initdb.d/004-provider-settings.sql:ro
       - ./database/005_asaas_dual_environment.sql:/docker-entrypoint-initdb.d/005-asaas-dual-environment.sql:ro
       - ./database/006_sandbox_pix_demos.sql:/docker-entrypoint-initdb.d/006-sandbox-pix-demos.sql:ro
+      - ./database/007_action_catalog.sql:/docker-entrypoint-initdb.d/007-action-catalog.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U acoes -d acoes"]
       interval: 5s
