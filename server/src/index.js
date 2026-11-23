@@ -359,6 +359,19 @@ app.post("/api/admin/pix-demo",requireSecureAdminSetup,sessionAdmin,pixDemoLimit
   error(res,502,"Não foi possível gerar o Pix Sandbox. Verifique a configuração e tente novamente.");
  }
 });
+app.get("/api/admin/pix-demo/recent",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ try{
+  const q=await pool.query("select id,provider_payment_id,status,created_at from sandbox_pix_demos where provider_payment_id is not null order by created_at desc limit 1");
+  if(!q.rowCount)return error(res,404,"Nenhum Pix Sandbox para recuperar");
+  const p=q.rows[0];
+  const key=(await getAsaasSettings(pool,"sandbox"))?.apiKey;
+  if(!key)return error(res,503,"Sandbox não configurado");
+  const qr=await getSandboxPixQr(p.provider_payment_id,key);
+  const provider=await getSandboxPixPayment(p.provider_payment_id,key);
+  res.set("Cache-Control","no-store");
+  res.json({orderId:p.id,status:p.status,providerStatus:provider.status,amountCents:500,environment:"sandbox",...qr});
+ }catch(e){next(e)}
+});
 app.get("/api/admin/pix-demo/:id",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
  try{
