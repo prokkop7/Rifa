@@ -273,7 +273,7 @@ let checkoutMethod="automatic";
 const actionHoldMessage=msg=>{$("#actionHoldMessage").textContent=msg};
 async function loadCheckoutMethod(){
  try{
-  const r=await fetch(actionNumbersAPI+"/api/actions/checkout-mode",{cache:"no-store"});
+  const r=await fetch(actionNumbersAPI+"/api/checkout/mode",{cache:"no-store"});
   if(!r.ok)throw Error("Configuração indisponível");
   const data=await r.json();
   checkoutMethod=data.mode==="whatsapp"&&data.manualEnabled?"whatsapp":"automatic";
