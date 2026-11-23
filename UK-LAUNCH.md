@@ -1,17 +1,18 @@
 # UK market configuration — London / England
 
-This project is being adapted for UK commercial prize draws and prize competitions.
+Projeto para brasileiros residentes em Londres e região, com interface em português e preços mostrados em reais, sujeito às regras aplicáveis no Reino Unido.
 
 ## Initial scope
-- Interface: en-GB
-- Currency: GBP
+- Interface: pt-BR (português para brasileiros residentes no Reino Unido)
+- Display currency: BRL (R$). A liquidação efetiva depende do adquirente, conta bancária e câmbio aplicáveis
 - Time zone: Europe/London, daylight saving time aware
-- Phone: UK (+44) with international numbers supported where terms permit
+- Phone: accept UK (+44) and Brazil (+55), plus international numbers according to identity verification and applicable eligibility rules
 - Geographic eligibility: England initially; do not assume identical rules across the entire UK
-- Units/pricing: final paid entry price **not yet determined**
+- Provisional campaign price: R$ 50 per paid entry, proposed only; do not activate payment until compliant campaign classification and payment provider approval
 - Competition: two used laptops (Dell Core i5 4th gen, 4GB, 240GB SSD; HP Core i3 7th gen, 8GB, 240GB SSD)
 - Proposed interface: public prize gallery; numbers grid; distinct free and paid entry routes; registration and login; 3-minute temporary reservation; status and transaction history
-- The previous Brazil-only telephone validator and BRL assumptions are not suitable for the UK launch.
+- A validação atual de telefone continua limitada a +55; deve ser adaptada para +44 e números internacionais antes do uso no Reino Unido.
+- Interface em português, preço exibido em reais, horário em Europe/London, mas operação/consumidor situados no Reino Unido: idioma e moeda não afastam exigências legais britânicas.
 
 ## Compliance controls required before paid launch
 - Determine and document whether the campaign is a qualifying free draw with an equal-access genuine free route or a genuine skill-based prize competition.
@@ -21,6 +22,10 @@ This project is being adapted for UK commercial prize draws and prize competitio
 - Assess the 2025 voluntary code for prize draw operators and recommended controls.
 - Obtain UK legal review and acquiring provider approval, including classification of the activity.
 - Asaas is a Brazil-focused service; do not assume it supports UK merchant acquisition or this category. Select a payment provider which explicitly approves UK prize draws.
+
+## Moeda de apresentação e cobrança
+- Uma etiqueta R$ 50 no site não garante que o cartão/PIX será processado em BRL. Confirmar moeda de cobrança, conversão, reembolso, tarifas e informação clara ao consumidor.
+- PIX depende de recebedor e provedor habilitados. Não pressupor conta Asaas britânica.
 
 ## Proposed payment lifecycle (for approved paid entry campaigns only)
 1. Lock chosen numbers for 3 minutes using server-side UTC expiry.
