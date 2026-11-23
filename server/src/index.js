@@ -170,11 +170,22 @@ try{const r=await pool.query("insert into campaigns(organizer_id,title,descripti
 // Isolated sandbox admin login; sessions expire on restart.
 const adminSessions=new Map();
 const adminLoginLimiter=rateLimit({windowMs:15*60*1000,limit:6,standardHeaders:"draft-7",legacyHeaders:false});
-function adminCookie(req){return (req.get("cookie")||"").split(";").map(s=>s.trim()).find(s=>s.startsWith("acoes_admin="))?.slice(12)||""}
+function adminCookies(req){
+ // Browsers may send both the old and new cookie paths after migration.
+ return (req.get("cookie")||"").split(";").map(s=>s.trim())
+  .filter(s=>s.startsWith("acoes_admin=")).map(s=>s.slice(12))
+  .filter(s=>/^[0-9a-f]{64}$/i.test(s));
+}
+function activeAdminToken(req){
+ const now=Date.now();
+ return adminCookies(req).find(token=>{
+  const entry=adminSessions.get(digest(token));
+  return entry&&entry.expiresAt>now;
+ })||null;
+}
 function sessionAdmin(req,res,next){
- const token=adminCookie(req);
- const session=adminSessions.get(digest(token));
- if(!token||!session||session.expiresAt<Date.now())return error(res,401,"Faça login");
+ const token=activeAdminToken(req);
+ if(!token)return error(res,401,"Faça login");
  const origin=req.protocol+"://"+req.get("host");
  if(!["GET","HEAD","OPTIONS"].includes(req.method)&&req.get("origin")!==origin)return error(res,403,"Origem não autorizada");
  next();
@@ -198,13 +209,15 @@ app.post("/api/admin/asaas/login",requireAdminLoginReady,adminLoginLimiter,async
   if(adminSessions.size>=10)adminSessions.delete(adminSessions.keys().next().value);
   adminSessions.set(digest(token),{expiresAt:Date.now()+8*60*60*1000});
   res.set("Cache-Control","no-store");
+  // Remove stale cookie issued before the admin path was widened.
+  res.clearCookie("acoes_admin",{path:"/api/admin/asaas",sameSite:"strict",secure:req.secure,httpOnly:true});
   res.cookie("acoes_admin",token,{httpOnly:true,secure:req.secure,sameSite:"strict",path:"/api/admin",maxAge:8*60*60*1000});
   res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL});
  }catch(e){console.error("Admin login error",e.message);return error(res,500,"Erro interno")}
 });
 app.get("/api/admin/asaas/session",requireAdminLoginReady,sessionAdmin,(req,res)=>res.json({authenticated:true,email:process.env.ADMIN_LOGIN_EMAIL}));
 app.post("/api/admin/asaas/logout",requireAdminLoginReady,sessionAdmin,(req,res)=>{
- adminSessions.delete(digest(adminCookie(req)));
+ for(const token of adminCookies(req))adminSessions.delete(digest(token));
  res.clearCookie("acoes_admin",{path:"/api/admin",sameSite:"strict",secure:req.secure,httpOnly:true});
  res.clearCookie("acoes_admin",{path:"/api/admin/asaas",sameSite:"strict",secure:req.secure,httpOnly:true});
  res.json({authenticated:false});
