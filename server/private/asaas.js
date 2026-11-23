@@ -4,7 +4,7 @@ let currentEnvironment="sandbox",activeEnvironment="sandbox";
 const webhookUrl=()=>location.origin+(currentEnvironment==="production"?"/api/webhooks/asaas/production":"/api/webhooks/asaas");
 $("#webhookUrl").textContent=webhookUrl();
 function status(message,good=false){const p=$("#message");p.textContent=message;p.className=good?"good":"error"}
-const adminPages=new Set(["overview","actions","reservations","pix","asaas","security"]);
+const adminPages=new Set(["overview","actions","reservations","pix","asaas","security","checkout"]);
 let currentAdminPage="overview",adminAuthenticated=false;
 function activateAdminPage(name){
  if(!adminPages.has(name))name="overview";
@@ -45,7 +45,7 @@ async function call(method,path,body){
  if(!response.ok){if(response.status===401&&path!=="/api/admin/asaas/login"&&path!=="/api/admin/asaas/session"){signedIn(false);$("#loginForm").scrollIntoView({behavior:"smooth",block:"center"});status("Sua sessão administrativa expirou. Entre novamente para continuar.");}throw Error(response.status===401&&path!=="/api/admin/asaas/login"?"Sessão encerrada. Faça login novamente.":result.error||"Erro HTTP "+response.status)}
  return result;
 }
-async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions();await refreshPixLedger()}catch{signedIn(false)}}
+async function checkSession(){try{await call("GET","/api/admin/asaas/session");signedIn(true);await runCheck();await loadActions();await refreshPixLedger();await loadCheckoutMode();await loadManualOrders();await loadCheckoutMode();await loadManualOrders()}catch{signedIn(false)}}
 function refreshTabs(){document.querySelectorAll("[data-environment]").forEach(btn=>{const selected=btn.dataset.environment===currentEnvironment;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected))});$("#keyEnvironmentLabel").textContent="Chave de API Asaas "+(currentEnvironment==="sandbox"?"Sandbox":"Produção");$("#activeEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";$("#activeBadge").textContent="PREFERÊNCIA: "+activeEnvironment.toUpperCase();
  $("#dashboardEnvironment").textContent=activeEnvironment==="sandbox"?"Sandbox":"Produção";
  $("#dashboardCheckoutMode").textContent=activeEnvironment==="sandbox"?"Sandbox (teste)":"Produção (real)";
@@ -323,4 +323,81 @@ $("#auditAction").addEventListener("change",()=>loadAudit());
 $("#auditType").addEventListener("change",()=>loadAudit());
 $("#auditRefresh").addEventListener("click",()=>loadAudit());
 $("#auditMore").addEventListener("click",()=>loadAudit(true));
+function checkoutNotice(message,good=false){
+ const p=$("#checkoutConfigMessage");p.textContent=message;p.className=good?"good":"error";
+}
+async function loadCheckoutMode(){
+ try{
+  const x=await call("GET","/api/admin/checkout-mode");
+  $("#checkoutMode").value=x.mode;
+  $("#rayaEndpoint").value=x.rayaEndpoint;
+  $("#rayaDestination").value=x.destinationPhone;
+  $("#rayaBearer").value="";
+  $("#rayaTokenState").textContent=x.tokenConfigured?"Token cadastrado e protegido. Deixe em branco para manter.":"Nenhum token cadastrado.";
+  $("#checkoutModeNote").textContent=x.mode==="whatsapp"?
+   "Modo ativo: finalizar gera reserva e notificação via Raya; não confirma pagamento.":
+   "Modo automático selecionado: o checkout de números ainda não está conectado ao Asaas. Não há cobrança automática nesta tela.";
+  checkoutNotice("Configurações carregadas.",true);
+ }catch(e){checkoutNotice(e.message)}
+}
+$("#checkoutMode").addEventListener("change",()=>{
+ $("#checkoutModeNote").textContent=$("#checkoutMode").value==="whatsapp"?
+ "O participante informa nome e WhatsApp após escolher os números. Reservamos e enviamos o pedido à Raya.":
+ "Selecionar automático não conecta cobranças aos números sem a integração de checkout específica.";
+});
+$("#checkoutModeForm").addEventListener("submit",async e=>{
+ e.preventDefault();const button=$("#checkoutModeSave");button.disabled=true;
+ try{
+  const token=$("#rayaBearer").value.trim();
+  const body={mode:$("#checkoutMode").value,rayaEndpoint:$("#rayaEndpoint").value.trim(),
+   destinationPhone:$("#rayaDestination").value.replace(/\D/g,"")};
+  if(token)body.token=token;
+  await call("PUT","/api/admin/checkout-mode",body);
+  checkoutNotice("Modo salvo. Novas solicitações usarão a forma selecionada.",true);
+  await loadCheckoutMode();
+ }catch(err){checkoutNotice(err.message)}finally{button.disabled=false}
+});
+$("#checkoutModeRefresh").addEventListener("click",loadCheckoutMode);
+function manualOrderMessage(message){$("#manualOrdersMessage").textContent=message}
+async function loadManualOrders(){
+ try{
+  const data=await call("GET","/api/admin/manual-requests");
+  const target=$("#manualOrdersList");target.replaceChildren();
+  manualOrderMessage(data.orders.length+" pedido(s) registrados.");
+  for(const o of data.orders){
+   const row=document.createElement("article");row.className="manual-order-row";
+   const title=document.createElement("strong");title.textContent=o.title+" · "+o.status.toUpperCase();
+   const info=document.createElement("p");
+   info.textContent="Pedido "+o.id.slice(0,8)+"… · Cliente: "+o.contact_name+
+    " · WhatsApp: "+o.contact_phone.replace(/^\+/,"")+
+    " · Números: "+o.numbers.join(", ")+
+    " · "+o.quantity+" × "+displayBRL(o.unit_price_cents)+" = "+displayBRL(Number(o.total_cents));
+   const meta=document.createElement("small");meta.textContent="Raya: "+o.notification_status+
+    " · Criado em "+new Date(o.created_at).toLocaleString("pt-BR")+
+    " · Até "+new Date(o.expires_at).toLocaleString("pt-BR");
+   const actions=document.createElement("div");actions.className="action-buttons";
+   if(o.status==="reserved"&&o.notification_status==="failed"){
+    const retry=document.createElement("button");retry.type="button";retry.className="outline";retry.textContent="Reenviar";
+    retry.addEventListener("click",async()=>{
+     retry.disabled=true;
+     try{const result=await call("POST","/api/admin/manual-requests/"+o.id+"/retry",{});
+      manualOrderMessage(result.accepted?"Notificação aceita pela Raya.":"Envio ainda pendente; confira o token e o canal.");
+      await loadManualOrders();
+     }catch(e){manualOrderMessage(e.message)}finally{retry.disabled=false}
+    });actions.append(retry);
+   }
+   if(o.status==="reserved"){
+    const release=document.createElement("button");release.type="button";release.className="outline";release.textContent="Liberar números";
+    release.addEventListener("click",async()=>{
+     if(!confirm("Liberar os números desse pedido?"))return;
+     release.disabled=true;
+     try{await call("POST","/api/admin/manual-requests/"+o.id+"/release",{});await loadManualOrders()}
+     catch(e){manualOrderMessage(e.message)}finally{release.disabled=false}
+    });actions.append(release);
+   }
+   row.append(title,info,meta,actions);target.append(row);
+  }
+ }catch(e){manualOrderMessage(e.message)}
+}
+$("#manualOrdersRefresh").addEventListener("click",loadManualOrders);
 refreshTabs();checkSession();
