@@ -85,7 +85,7 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 .action-hero{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:#f1f8f8;margin-bottom:12px}
 .legal-content p{line-height:1.7;font-size:13px;color:#526d77}
 .action-extra{background:#f5fbf9;border:1px solid #deece9;border-radius:12px;padding:12px;margin:12px 0;color:#45636e}.action-extra p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;font-size:13px;margin:8px 0 0}#actionRegulationLink{display:inline-block;margin:10px 0 13px;color:#167f74;text-underline-offset:3px}#actionRegulationLink[hidden]{display:none}
-.participant-switch{display:flex;gap:8px;margin:12px 0 17px}.participant-switch button{flex:1;border:1px solid #d6e8e5;border-radius:10px;background:#f3faf8;color:#4e7978;padding:11px;font-weight:750;cursor:pointer}.participant-switch button.selected{background:#208a7e;color:white;border-color:#208a7e}.participant-message{font-size:12px;line-height:1.5;margin:10px 0;color:#b45050;min-height:18px}.participant-message.ok{color:#187b68}.participant-entries{display:grid;gap:8px}.participant-entry{background:#f3faf8;border:1px solid #dcebe7;padding:10px;border-radius:10px;font-size:12px;color:#486773}.participant-entry strong{display:block;margin-bottom:4px}</style></head>
+.participant-switch{display:flex;gap:8px;margin:12px 0 17px}.participant-switch button{flex:1;border:1px solid #d6e8e5;border-radius:10px;background:#f3faf8;color:#4e7978;padding:11px;font-weight:750;cursor:pointer}.participant-switch button.selected{background:#208a7e;color:white;border-color:#208a7e}.participant-message{font-size:12px;line-height:1.5;margin:10px 0;color:#b45050;min-height:18px}.participant-message.ok{color:#187b68}.participant-entries{display:grid;gap:8px}.participant-entry{background:#f3faf8;border:1px solid #dcebe7;padding:10px;border-radius:10px;font-size:12px;color:#486773}.participant-entry strong{display:block;margin-bottom:4px}.action-number-board{margin:15px 0;padding:14px;background:#f7fcfb;border:1px solid #dbeae6;border-radius:14px}.action-number-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;margin:12px 0}.action-number{aspect-ratio:1;min-width:0;font-size:10px;border:1px solid #d4e5e7;border-radius:7px;background:#fff;color:#34596b;cursor:pointer}.action-number[aria-pressed=true]{background:#248b80;color:#fff;border-color:#248b80}.action-number.reserved{background:#fff0df;color:#a56d31;border-color:#f1d4ad}.action-number.confirmed{background:#e7e9ee;color:#818b9b;border-color:#d5d9e1}.action-number:disabled{cursor:not-allowed}.dot.action-held{background:#e7b57c}.dot.action-confirmed{background:#a8b0bf}.action-page-controls{display:flex;justify-content:center;gap:8px;align-items:center}.action-page-controls .button{max-width:130px;min-height:35px;font-size:11px;padding:7px}.action-page-controls span{font-size:12px;color:#657f8b}.action-selection-panel{margin-top:12px}.action-selection-panel .button{max-width:360px}@media(min-width:700px){.action-number-grid{grid-template-columns:repeat(20,minmax(0,1fr))}.action-number{font-size:12px}}</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
@@ -173,6 +173,19 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 <div class="action-extra" id="actionPrizeBox" hidden><div class="label">Detalhes do prêmio</div><p id="actionPrizeDisplay"></p></div>
 <div class="action-extra" id="actionRulesBox" hidden><div class="label">Condições da ação</div><p id="actionRulesDisplay"></p></div>
 <a id="actionRegulationLink" href="#" rel="noopener noreferrer" target="_blank" hidden>Consultar regulamento completo</a>
+<div class="action-number-board">
+<div class="label">Disponibilidade dos números</div>
+<div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot action-held"></i>Reservado temporariamente</span><span><i class="dot action-confirmed"></i>Confirmado</span></div>
+<div class="hint" id="actionNumberSummary">Carregando números...</div>
+<div class="action-number-grid" id="actionNumberGrid" aria-label="Números desta ação"></div>
+<div class="action-page-controls"><button class="button secondary" id="actionPrevPage" type="button">Anterior</button><span id="actionPageLabel">1 / 1</span><button class="button secondary" id="actionNextPage" type="button">Próxima</button></div>
+<div id="actionSelectionPanel" class="action-selection-panel">
+<div class="sum"><span>Selecionados</span><strong id="actionSelectedCount">0</strong></div>
+<div class="hint">A seleção temporária dura três minutos e não representa compra ou inscrição confirmada.</div>
+<button type="button" class="button" id="actionHoldButton" disabled>Reservar temporariamente</button>
+<button type="button" class="button secondary" id="actionReleaseButton" hidden style="margin-top:8px">Liberar minha seleção</button>
+<div class="hint" id="actionHoldMessage" role="status" aria-live="polite"></div>
+</div></div>
 <div class="notice">Prévia de planejamento. Inscrições e compras de números não estão habilitadas nesta ação.</div>
 <button type="button" class="button secondary" data-tab="eventos" style="margin-top:12px">Voltar às ações</button></div>
 </section>
@@ -230,7 +243,91 @@ document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListen
 }));
 const catalogEndpoint="https://painel-acoes.rayaconnect.com.br/api/actions";
 const actionNames={product:"Produto",money:"Dinheiro",service:"Serviço"};
+let currentCatalogAction=null,actionNumbers=null,actionPage=0,actionSelected=new Set(),myActionHold=null;
+const actionNumbersAPI="https://painel-acoes.rayaconnect.com.br";
+const ACTION_PAGE_SIZE=100;
+const actionHoldMessage=msg=>{$("#actionHoldMessage").textContent=msg};
+function renderActionNumbers(){
+ if(!actionNumbers)return;
+ const {total,reserved,confirmed}=actionNumbers;
+ const reservedMap=new Map(reserved.map(x=>[x.number,x.expiresAt]));
+ const confirmedSet=new Set(confirmed);
+ const pages=Math.max(1,Math.ceil(total/ACTION_PAGE_SIZE));
+ actionPage=Math.min(Math.max(0,actionPage),pages-1);
+ $("#actionPageLabel").textContent=(actionPage+1)+" / "+pages;
+ $("#actionPrevPage").disabled=actionPage===0;
+ $("#actionNextPage").disabled=actionPage>=pages-1;
+ const grid=$("#actionNumberGrid");grid.replaceChildren();
+ const first=actionPage*ACTION_PAGE_SIZE+1,last=Math.min(total,(actionPage+1)*ACTION_PAGE_SIZE);
+ for(let n=first;n<=last;n++){
+  const isConfirmed=confirmedSet.has(n),isReserved=reservedMap.has(n);
+  const button=document.createElement("button");
+  button.type="button";button.className="action-number";
+  button.textContent=String(n).padStart(3,"0");
+  button.disabled=isConfirmed||isReserved;
+  button.classList.toggle("reserved",isReserved);
+  button.classList.toggle("confirmed",isConfirmed);
+  button.setAttribute("aria-pressed",String(actionSelected.has(n)));
+  button.title=isConfirmed?"Confirmado":isReserved?"Reservado temporariamente":"Disponível";
+  button.addEventListener("click",()=>{if(actionSelected.has(n))actionSelected.delete(n);else actionSelected.add(n);renderActionNumbers()});
+  grid.append(button);
+ }
+ $("#actionSelectedCount").textContent=String(actionSelected.size);
+ $("#actionNumberSummary").textContent=(total-reserved.length-confirmed.length)+" disponíveis · "+reserved.length+" temporariamente reservados · "+confirmed.length+" confirmados";
+ $("#actionHoldButton").disabled=!actionSelected.size||Boolean(myActionHold);
+ $("#actionReleaseButton").hidden=!myActionHold;
+}
+async function refreshActionNumbers(){
+ if(!currentCatalogAction)return;
+ const slug=currentCatalogAction.slug;
+ try{
+  const response=await fetch(actionNumbersAPI+"/api/actions/"+encodeURIComponent(slug)+"/numbers",{cache:"no-store"});
+  if(!response.ok)throw Error("Não foi possível consultar disponibilidade");
+  const data=await response.json();
+  if(!currentCatalogAction||currentCatalogAction.slug!==slug)return;
+  actionNumbers=data;
+  const occupied=new Set([...data.reserved.map(x=>x.number),...data.confirmed]);
+  for(const n of actionSelected){if(occupied.has(n))actionSelected.delete(n)}
+  if(myActionHold&&new Date(myActionHold.expiresAt).getTime()<=Date.now()){
+    myActionHold=null;actionHoldMessage("A seleção temporária expirou. Os números foram liberados.");
+  }
+  renderActionNumbers();
+ }catch(e){actionHoldMessage(e.message)}
+}
+$("#actionPrevPage").addEventListener("click",()=>{actionPage--;renderActionNumbers()});
+$("#actionNextPage").addEventListener("click",()=>{actionPage++;renderActionNumbers()});
+$("#actionHoldButton").addEventListener("click",async()=>{
+ if(!currentCatalogAction||!actionSelected.size)return;
+ if(!participantToken){actionHoldMessage("Entre na Minha área para reservar seus números temporariamente.");return}
+ const button=$("#actionHoldButton");button.disabled=true;
+ try{
+  const response=await fetch(actionNumbersAPI+"/api/actions/"+encodeURIComponent(currentCatalogAction.slug)+"/holds",{
+   method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+participantToken},
+   body:JSON.stringify({numbers:[...actionSelected]}),cache:"no-store"
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||"Não foi possível reservar os números");
+  myActionHold={slug:currentCatalogAction.slug,reservationId:result.reservationId,expiresAt:result.expiresAt};
+  actionSelected.clear();
+  actionHoldMessage("Seleção temporária criada. Expira às "+new Date(result.expiresAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})+". Nenhum pagamento foi realizado.");
+  await refreshActionNumbers();
+ }catch(e){actionHoldMessage(e.message);button.disabled=false}
+});
+$("#actionReleaseButton").addEventListener("click",async()=>{
+ if(!myActionHold||!participantToken)return;
+ const h=myActionHold;
+ try{
+  const response=await fetch(actionNumbersAPI+"/api/actions/"+encodeURIComponent(h.slug)+"/holds/"+encodeURIComponent(h.reservationId),{
+   method:"DELETE",headers:{"Authorization":"Bearer "+participantToken},cache:"no-store"
+  });
+  if(!response.ok)throw Error("Não foi possível liberar a seleção");
+  myActionHold=null;actionHoldMessage("Seleção liberada.");await refreshActionNumbers();
+ }catch(e){actionHoldMessage(e.message)}
+});
+setInterval(()=>{if(currentCatalogAction&&$("#acao").classList.contains("current"))refreshActionNumbers()},15000);
 function showCatalogAction(a){
+ currentCatalogAction=a;actionPage=0;actionSelected.clear();myActionHold=null;actionNumbers=null;
+ $("#actionNumberGrid").replaceChildren();$("#actionNumberSummary").textContent="Carregando números...";actionHoldMessage("");
  $("#actionCategory").textContent=actionNames[a.category]||"Ação";
  $("#actionHeadline").textContent=a.title;
  $("#actionDescription").textContent=a.description||"Detalhes em preparação.";
@@ -253,7 +350,7 @@ function showCatalogAction(a){
  const img=$("#actionHero");
  if(a.image_url&&a.image_url.startsWith("https://")){img.src=a.image_url;img.alt="Imagem da ação "+a.title;img.hidden=false}
  else{img.hidden=true;img.removeAttribute("src")}
- tab("acao");
+ tab("acao");refreshActionNumbers();
 }
 async function loadCatalog(){
  try{
