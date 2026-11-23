@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
 import {timingSafeEqual,randomBytes,createHash,randomUUID,scrypt as scryptCallback} from "node:crypto";
 import {promisify} from "node:util";
 import {fileURLToPath} from "node:url";
-import {getAsaasSettings,saveAsaasSettings,deleteAsaasSettings,validateAsaasSettings,getActiveAsaasEnvironment,setActiveAsaasEnvironment} from "./asaas-settings.js";
+import {getAsaasSettings,saveAsaasSettings,deleteAsaasSettings,validateAsaasSettings,getActiveAsaasEnvironment,setActiveAsaasEnvironment,seal,unseal} from "./asaas-settings.js";
 const scrypt=promisify(scryptCallback);
 
 const required=["DATABASE_URL","APP_ORIGIN","ADMIN_API_KEY"];
@@ -122,6 +122,197 @@ app.get("/api/admin/reservation-audit",requireSecureAdminSetup,sessionAdmin,asyn
    summary:Object.fromEntries(summary.rows.map(x=>[x.event_type,x.count]))});
  }catch(e){next(e)}
 });
+const RAYA_DEFAULT_ENDPOINT="https://api.rayaconnect.com.br/v2/api/external/9f945521-57eb-426a-8207-f4e9cc69b8de";
+const RAYA_DEFAULT_PHONE="5522999397655";
+const BRL=amount=>(amount/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+function rayaEndpoint(value){
+ if(typeof value!=="string"||value.length>200)return null;
+ const match=/^https:\/\/api\.rayaconnect\.com\.br\/v2\/api\/external\/([0-9a-f-]{36})$/i.exec(value);
+ return match&&uuid(match[1])?value:null;
+}
+async function actionCheckoutConfig(client=pool){
+ const q=await client.query("select mode,raya_endpoint,destination_phone,token_ciphertext from action_checkout_settings where id='global'");
+ return q.rows[0]||{mode:"automatic",raya_endpoint:RAYA_DEFAULT_ENDPOINT,destination_phone:RAYA_DEFAULT_PHONE,token_ciphertext:null};
+}
+async function expireManualRequests(client,actionId=null){
+ // Caller owns any needed serialization lock on an action row.
+ const conditions=actionId?"and action_id=$1":"";
+ const args=actionId?[actionId]:[];
+ const q=await client.query(
+  "update action_manual_requests set status='expired',updated_at=now() "+
+  "where status='reserved' and expires_at<=now() "+conditions+" returning id",args);
+ if(q.rowCount)await client.query("delete from action_manual_request_numbers where request_id=any($1::uuid[])",[q.rows.map(r=>r.id)]);
+ return q.rowCount;
+}
+function formatManualRequestMessage(r){
+ const num=r.numbers.map(n=>String(n).padStart(3,"0")).join(", ");
+ const text=[
+  "*AÇÕES | NOVA RESERVA PARA ATENDIMENTO*","",
+  "*Ação:* "+r.title,
+  "*Categoria:* "+({product:"Produto",money:"Dinheiro",service:"Serviço"}[r.category]||r.category),
+  "*Pedido:* "+r.id,
+  "*ID do cliente:* "+r.customer_id,"",
+  "*Nome:* "+r.contact_name,
+  "*WhatsApp:* "+r.contact_phone.replace(/^\+/,""),
+  "*Números:* "+num,
+  "*Quantidade:* "+r.quantity,
+  "*Valor unitário:* "+BRL(r.unit_price_cents),
+  "*Valor total:* "+BRL(Number(r.total_cents)),
+  "*Reservado até:* "+new Date(r.expires_at).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"}),
+  "",
+  "*Situação:* RESERVADO — AGUARDANDO CONFERÊNCIA",
+  "_Envio automático do AÇÕES. A reserva não comprova pagamento._"
+ ];
+ return text.join("\n");
+}
+async function sendManualRequestNotification(orderId){
+ const claimed=await pool.query(
+  "update action_manual_requests set notification_status='sending',notification_attempts=notification_attempts+1,updated_at=now() "+
+  "where id=$1 and status='reserved' and notification_status in ('pending','failed') returning id",
+  [orderId]);
+ if(!claimed.rowCount)return {attempted:false};
+ try{
+  const config=await actionCheckoutConfig();
+  if(!config.token_ciphertext)throw Error("Raya token not configured");
+  const token=unseal(config.token_ciphertext)?.token;
+  if(typeof token!=="string"||token.length<16)throw Error("Raya token invalid");
+  const q=await pool.query(
+   "select r.*,a.title,a.category from action_manual_requests r join action_catalog a on a.id=r.action_id where r.id=$1",
+   [orderId]);
+  if(!q.rowCount)throw Error("Request not found");
+  const response=await fetch(config.raya_endpoint,{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json","Accept":"application/json"},
+   body:JSON.stringify({body:formatManualRequestMessage(q.rows[0]),number:config.destination_phone,externalKey:"acoes-"+orderId,isClosed:false}),
+   signal:AbortSignal.timeout(11000)
+  });
+  if(!response.ok)throw Error("Raya HTTP "+response.status);
+  await pool.query(
+   "update action_manual_requests set notification_status='sent',notification_sent_at=now(),notification_error=null,updated_at=now() where id=$1",[orderId]);
+  return {attempted:true,accepted:true};
+ }catch(err){
+  const reason=(String(err.message||"Notification failed")).slice(0,150);
+  await pool.query(
+   "update action_manual_requests set notification_status='failed',notification_error=$2,updated_at=now() where id=$1",
+   [orderId,reason]).catch(()=>{});
+  console.error("AÇÕES Raya notification failed",orderId,reason);
+  return {attempted:true,accepted:false};
+ }
+}
+app.get("/api/actions/checkout-mode",async(req,res,next)=>{
+ try{
+  const config=await actionCheckoutConfig();
+  res.set("Cache-Control","no-store");
+  res.json({mode:config.mode,manualEnabled:config.mode==="whatsapp"&&!!config.token_ciphertext});
+ }catch(e){next(e)}
+});
+app.get("/api/admin/checkout-mode",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ try{
+  const config=await actionCheckoutConfig();
+  res.set("Cache-Control","no-store");
+  res.json({mode:config.mode,rayaEndpoint:config.raya_endpoint,destinationPhone:config.destination_phone,
+   tokenConfigured:!!config.token_ciphertext,automaticRaffleNumbersEnabled:false});
+ }catch(e){next(e)}
+});
+app.put("/api/admin/checkout-mode",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ const mode=String(req.body?.mode||"");
+ const endpoint=rayaEndpoint(req.body?.rayaEndpoint);
+ const destination=String(req.body?.destinationPhone||"").replace(/\D/g,"");
+ const token=req.body?.token;
+ if(!["automatic","whatsapp"].includes(mode)||!endpoint||!/^55[1-9][1-9][0-9]{8,9}$/.test(destination)||
+  (token!==undefined&&(typeof token!=="string"||token.length<16||token.length>2048||/\s/.test(token))))
+  return error(res,400,"Confira modo, URL da Raya, número do destinatário e token");
+ try{
+  const current=await actionCheckoutConfig();
+  const encrypted=token?seal({token}):current.token_ciphertext;
+  if(mode==="whatsapp"&&!encrypted)return error(res,409,"Configure primeiro o token Bearer da Raya");
+  await pool.query(
+   "insert into action_checkout_settings(id,mode,raya_endpoint,destination_phone,token_ciphertext) "+
+   "values('global',$1,$2,$3,$4) on conflict(id) do update set mode=excluded.mode,raya_endpoint=excluded.raya_endpoint,"+
+   "destination_phone=excluded.destination_phone,token_ciphertext=excluded.token_ciphertext,updated_at=now()",
+   [mode,endpoint,destination,encrypted]);
+  res.json({mode,rayaEndpoint:endpoint,destinationPhone:destination,tokenConfigured:!!encrypted});
+ }catch(e){next(e)}
+});
+const manualRequestLimiter=rateLimit({windowMs:15*60*1000,limit:6,standardHeaders:"draft-7",legacyHeaders:false});
+app.post("/api/actions/:slug/manual-requests",manualRequestLimiter,async(req,res,next)=>{
+ if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
+ const numbers=req.body?.numbers,name=String(req.body?.fullName||"").trim().replace(/\s+/g," ");
+ const normalized=phone(req.body?.phone);
+ if(!Array.isArray(numbers)||numbers.length<1||numbers.length>20||!numbers.every(Number.isInteger)||
+  new Set(numbers).size!==numbers.length||name.length<3||name.length>120||!normalized)
+  return error(res,400,"Informe nome, WhatsApp e até 20 números distintos");
+ const client=await pool.connect();
+ let savedId=null;
+ try{
+  await client.query("BEGIN");
+  const config=await actionCheckoutConfig(client);
+  if(config.mode!=="whatsapp"||!config.token_ciphertext){await client.query("ROLLBACK");return error(res,409,"Atendimento WhatsApp não está habilitado")}
+  const a=await client.query(
+   "select id,title,category,number_count,max_numbers_per_person,price_cents from action_catalog where slug=$1 and state='preview' for update",
+   [req.params.slug]);
+  if(!a.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
+  const action=a.rows[0];
+  if(numbers.length>action.max_numbers_per_person||numbers.some(n=>n<1||n>action.number_count)){
+   await client.query("ROLLBACK");return error(res,400,"Número fora do intervalo ou limite da ação");
+  }
+  await expireManualRequests(client,action.id);
+  const taken=await client.query(
+   "select number from action_manual_request_numbers where action_id=$1 and number=any($2::int[]) "+
+   "union select number from action_number_holds where action_id=$1 and number=any($2::int[]) and expires_at>now() "+
+   "union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",
+   [action.id,numbers]);
+  if(taken.rowCount){await client.query("ROLLBACK");return error(res,409,"Um ou mais números já estão reservados")}
+  const total=action.price_cents*numbers.length;
+  const q=await client.query(
+   "insert into action_manual_requests(action_id,contact_name,contact_phone,unit_price_cents,quantity,total_cents,numbers,expires_at) "+
+   "values($1,$2,$3,$4,$5,$6,$7,now()+interval '24 hours') returning id,customer_id,expires_at",
+   [action.id,name,normalized,action.price_cents,numbers.length,total,numbers]);
+  savedId=q.rows[0].id;
+  for(const number of numbers)await client.query(
+   "insert into action_manual_request_numbers(action_id,number,request_id) values($1,$2,$3)",
+   [action.id,number,savedId]);
+  await client.query("COMMIT");
+  const delivered=await sendManualRequestNotification(savedId);
+  res.set("Cache-Control","no-store");
+  res.status(201).json({orderId:savedId,customerId:q.rows[0].customer_id,numbers,quantity:numbers.length,
+   unitPriceCents:action.price_cents,totalCents:total,expiresAt:q.rows[0].expires_at,
+   status:"reserved",notificationStatus:delivered.accepted?"sent":"pending",
+   message:delivered.accepted?"Pedido reservado e notificação aceita pela Raya.":"Pedido reservado; aviso pendente de reenvio pelo administrador."});
+ }catch(e){
+  await client.query("ROLLBACK").catch(()=>{});
+  if(e.code==="23505")return error(res,409,"Números já reservados");
+  next(e);
+ }finally{client.release()}
+});
+app.get("/api/admin/manual-requests",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ try{
+  await expireManualRequests(pool);
+  const q=await pool.query(
+   "select r.id,r.customer_id,r.contact_name,r.contact_phone,r.numbers,r.quantity,r.unit_price_cents,r.total_cents,"+
+   "r.status,r.notification_status,r.notification_attempts,r.created_at,r.expires_at,a.title,a.slug "+
+   "from action_manual_requests r join action_catalog a on a.id=r.action_id order by r.created_at desc limit 100");
+  res.set("Cache-Control","no-store");res.json({orders:q.rows});
+ }catch(e){next(e)}
+});
+app.post("/api/admin/manual-requests/:id/retry",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
+ try{
+  const result=await sendManualRequestNotification(req.params.id);
+  res.json({accepted:!!result.accepted,attempted:!!result.attempted});
+ }catch(e){next(e)}
+});
+app.post("/api/admin/manual-requests/:id/release",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const q=await client.query("update action_manual_requests set status='released',updated_at=now() where id=$1 and status='reserved' returning id",[req.params.id]);
+  if(q.rowCount)await client.query("delete from action_manual_request_numbers where request_id=$1",[req.params.id]);
+  await client.query("COMMIT");
+  res.json({released:!!q.rowCount});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
+ finally{client.release()}
+});
 app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
  try{
@@ -129,13 +320,15 @@ app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
   if(!a.rowCount)return error(res,404,"Ação não encontrada");
   const action=a.rows[0];
   await pool.query("delete from action_number_holds where action_id=$1 and expires_at<=now()",[action.id]);
-  const [holds,confirmed]=await Promise.all([
+  await expireManualRequests(pool,action.id);
+  const [holds,confirmed,manual]=await Promise.all([
    pool.query("select number,expires_at from action_number_holds where action_id=$1 and expires_at>now()",[action.id]),
-   pool.query("select number from action_number_confirmations where action_id=$1",[action.id])
+   pool.query("select number from action_number_confirmations where action_id=$1",[action.id]),
+   pool.query("select number from action_manual_request_numbers where action_id=$1",[action.id])
   ]);
   res.set("Cache-Control","no-store");
   res.json({total:action.number_count,maxPerPerson:action.max_numbers_per_person,
-   reserved:holds.rows.map(x=>({number:x.number,expiresAt:x.expires_at})),
+   reserved:[...holds.rows.map(x=>({number:x.number,expiresAt:x.expires_at})),...manual.rows.map(x=>({number:x.number,expiresAt:null}))],
    confirmed:confirmed.rows.map(x=>x.number),purchasesEnabled:false,confirmationEnabled:false});
  }catch(e){next(e)}
 });
@@ -187,6 +380,8 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
   if(new Set([...ownerNumbers,...numbers]).size>action.max_numbers_per_person){
    await client.query("ROLLBACK");return error(res,409,"Limite por participante atingido; libere a seleção anterior");
   }
+  const manualOccupied=await client.query("select number from action_manual_request_numbers where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
+  if(manualOccupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Números reservados para atendimento WhatsApp")}
   const occupied=await client.query("select number from action_number_holds where action_id=$1 and number=any($2::int[]) union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
   if(occupied.rowCount){await client.query("ROLLBACK");await auditHoldConflict(auditActionId,req.params.slug,auditPid,numbers);return error(res,409,"Um ou mais números já estão reservados ou confirmados")}
   const group=randomUUID(),expiresAt=new Date(Date.now()+180000);
