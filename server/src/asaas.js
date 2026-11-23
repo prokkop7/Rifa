@@ -1,4 +1,4 @@
-// Asaas Checkout: sandbox-only adapter for legitimate commercial orders.
+// Asaas Checkout: dual-environment adapter for standalone legitimate commercial orders.
 // Campaign entries and numbered prize draws MUST NOT use this module.
 import { timingSafeEqual } from "node:crypto";
 const API = "https://api-sandbox.asaas.com/v3";
@@ -12,6 +12,7 @@ function checkedEnvironment(environment){
 function settings(apiKeyOverride,environment="sandbox") {
   checkedEnvironment(environment);
   if(environment==="sandbox"&&process.env.ASAAS_ENV !== "sandbox") throw Error("Only Asaas sandbox is enabled for demonstration endpoints");
+  if(environment==="production"&&!apiKeyOverride)throw Error("Explicit production credentials required");
   if(!(apiKeyOverride||process.env.ASAAS_API_KEY)) throw Error("ASAAS_API_KEY not configured");
   return {"accept":"application/json","content-type":"application/json","access_token":apiKeyOverride||process.env.ASAAS_API_KEY,"User-Agent":"AcoesPlatform/0.2.0"};
 }
