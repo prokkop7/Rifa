@@ -33,7 +33,18 @@ main{width:100%;height:100dvh;min-height:520px;max-width:560px;margin:auto;displ
   #inicio .prize-tile .thumb{min-height:85px}
 }
 .event-filters{display:flex;gap:8px;margin:12px 0}.event-filter{border:1px solid #315365;background:#123142;color:#b9d6df;border-radius:999px;font-weight:700;padding:8px 13px;cursor:pointer;font:inherit;font-size:12px}.event-filter.active{background:#1b6059;color:#dffff4;border-color:#30b99d}.event-item{padding:0;overflow:hidden}.event-toggle{width:100%;border:0;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:16px;text-align:left;background:none;color:inherit;cursor:pointer}.event-toggle h3{margin:3px 0;font-size:18px}.event-toggle p{margin:0;font-size:12px;color:var(--quiet)}.event-side{display:flex;align-items:center;gap:11px}.event-status{display:inline-block;border-radius:99px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap}.event-status.preparing{background:#28495a;color:#addbe6}.event-chevron{font-size:22px;color:var(--mint)}.event-details{border-top:1px solid #335063;padding:10px 16px 16px}.event-details .prize-pair{margin:0}.event-details .gift{background:#112e3d}.empty-events{text-align:center;padding:22px;color:var(--quiet)}@media(max-width:410px){.event-filters{gap:5px}.event-filter{font-size:11px;padding:7px 10px}.event-toggle{padding:12px}}
-.empty-reservation{text-align:center;padding:35px 20px}.empty-reservation .empty-icon{font-size:36px;color:var(--mint)}.empty-reservation h3{font-size:17px;margin:7px 0}.empty-reservation p{font-size:13px;color:var(--quiet);margin:7px 0 18px}.empty-reservation .button{max-width:330px}[hidden]{display:none!important}</style></head>
+.empty-reservation{text-align:center;padding:35px 20px}.empty-reservation .empty-icon{font-size:36px;color:var(--mint)}.empty-reservation h3{font-size:17px;margin:7px 0}.empty-reservation p{font-size:13px;color:var(--quiet);margin:7px 0 18px}.empty-reservation .button{max-width:330px}[hidden]{display:none!important}
+.checkout-shade{position:absolute;inset:0;background:#03121bdc;display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:12px}
+main{position:relative}.checkout-sheet{background:linear-gradient(165deg,#153849,#0c2332);border:1px solid #426875;border-radius:20px;width:100%;max-width:540px;max-height:calc(100dvh - 24px);overflow:auto;padding:20px;box-shadow:0 20px 80px #0009}
+.checkout-head{display:flex;justify-content:space-between;align-items:start;gap:12px}.checkout-head h2{margin:4px 0 16px;font-size:23px}
+.checkout-close{border:1px solid #46717c;background:#193c4c;color:#dbf8f5;border-radius:12px;font-size:24px;width:38px;height:38px;cursor:pointer}
+.checkout-summary{background:#0b2736;border:1px solid #35566a;border-radius:14px;padding:14px;margin-bottom:14px}
+.checkout-summary .sum{margin:8px 0}.checkout-summary .sum strong{font-size:17px}.checkout-numbers{font-size:14px;font-weight:800;margin-top:6px;overflow-wrap:anywhere}
+.checkout-methods{display:grid;gap:9px}.checkout-choice{display:flex;gap:12px;justify-content:space-between;align-items:center;border:1px solid #345b6a;background:#143243;border-radius:12px;padding:12px}
+.checkout-choice strong{font-size:14px}.checkout-choice p{font-size:11px;color:#adc9d2;margin:4px 0 0}.checkout-choice span{font-size:10px;color:#b4c3ca;white-space:nowrap}
+.checkout-note{font-size:12px;color:#b3c9d4;line-height:1.4}
+@media(min-width:700px){.checkout-shade{align-items:center;padding:18px}.checkout-sheet{max-height:calc(100% - 36px)}}
+</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
@@ -72,7 +83,7 @@ main{width:100%;height:100dvh;min-height:520px;max-width:560px;margin:auto;displ
 <p id="emptyEvents" class="empty-events" hidden>Nenhum evento nesta categoria.</p>
 </section>
 <section id="numeros" class="panel" aria-label="Números"><div class="kicker">Etapa 01 • Escolha</div><h1 class="headline">Escolha seus <span class="mint">números</span></h1><div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot selected"></i>Selecionado</span></div><div id="grid" class="grid" aria-label="Grade de 100 números"></div>
-<div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Valor total</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Continuar</button><p class="hint" id="selectionMessage" aria-live="polite" hidden></p></div></section>
+<div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Valor total</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Comprar</button></div></section>
 <section id="reserva" class="panel" aria-label="Reserva"><div class="kicker">Acompanhamento</div><h1 class="headline">Minha <span class="mint">reserva</span></h1><div id="noReservation" class="glass empty-reservation"><div class="empty-icon">⌁</div><h3>Nenhuma reserva em andamento</h3><p>Quando uma solicitação de pagamento for iniciada, ela aparecerá aqui.</p><button class="button secondary" type="button" data-tab="numeros">Escolher números</button></div><div id="activeReservation" hidden><div class="glass"><div class="label">Tempo restante</div><div class="clock" id="clock">03:00</div><div class="sum"><span>Seus números</span><strong id="chosen">—</strong></div><div class="sum"><span>Valor total</span><strong id="reserveTotal">R$ 0,00</strong></div></div><button class="button" disabled>Continuar pagamento</button><button class="button secondary" id="cancel" type="button" style="margin-top:8px">Cancelar reserva</button></div></section>
 <section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Etapa 03 • Acompanhar</div><h1 class="headline">Minhas <span class="mint">participações</span></h1><div class="glass"><div class="label">Histórico de participações</div><h3 id="historyTitle">Nenhuma participação</h3><p id="historyText" class="lead">Você ainda não possui participações registradas.</p></div><div class="notice">Você poderá acompanhar aqui os eventos de que participou, seus números e resultados.</div></section>
 </div>
@@ -82,7 +93,16 @@ main{width:100%;height:100dvh;min-height:520px;max-width:560px;margin:auto;displ
 <button class="tab" type="button" data-tab="numeros" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>Números</button>
 <button class="tab" type="button" data-tab="reserva" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>Reserva</button>
 <button class="tab" type="button" data-tab="minhas" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-7 8-7s8 2 8 7"/></svg>Minha área</button>
-</nav></main>
+</nav><div id="checkoutModal" class="checkout-shade" hidden role="presentation">
+<section class="checkout-sheet" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle" tabindex="-1">
+<div class="checkout-head"><div><div class="kicker">Resumo da seleção</div><h2 id="checkoutTitle">Finalizar participação</h2></div><button type="button" class="checkout-close" id="closeCheckout" aria-label="Fechar">×</button></div>
+<div class="checkout-summary"><div class="label">Números escolhidos</div><div id="checkoutNumbers" class="checkout-numbers">—</div><div class="sum"><span>Quantidade</span><strong id="checkoutQuantity">0</strong></div><div class="sum"><span>Valor apresentado</span><strong id="checkoutAmount" class="mint">R$ 0,00</strong></div></div>
+<div class="checkout-methods"><div class="label">Formas de participação</div>
+<div class="checkout-choice"><div><strong>Pagamento</strong><p>Pix ou cartão, quando habilitados para este evento.</p></div><span>Indisponível</span></div>
+<div class="checkout-choice"><div><strong>Participação gratuita</strong><p>A modalidade gratuita será exibida aqui quando o evento estiver habilitado.</p></div><span>Em preparação</span></div></div>
+<p class="checkout-note">Este evento ainda não está recebendo pagamentos ou inscrições.</p>
+<button type="button" class="button secondary" id="checkoutReturn">Voltar aos números</button>
+</section></div></main>
 <script>
 "use strict";let selection=new Set(),expiry=0;const $=s=>document.querySelector(s);
 function fmt(n){return String(n).padStart(3,"0")}function money(n){return (n*50).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
@@ -90,7 +110,13 @@ function tab(name){for(const p of document.querySelectorAll(".panel"))p.classLis
 function render(){const g=$("#grid");g.replaceChildren();for(let n=1;n<=100;n++){let b=document.createElement("button");b.className="num";b.type="button";b.textContent=fmt(n);b.setAttribute("aria-pressed",String(selection.has(n)));b.addEventListener("click",()=>{selection.has(n)?selection.delete(n):selection.add(n);render()});g.append(b)}$("#count").textContent=selection.size+" números";$("#total").textContent=money(selection.size);$("#reserve").disabled=!selection.size;$("#chosen").textContent=selection.size?Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", "):"—";$("#reserveTotal").textContent=money(selection.size)}
 function tick(){if(!expiry)return;const sec=Math.max(0,Math.ceil((expiry-Date.now())/1000));$("#clock").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(sec===0){expiry=0;$("#activeReservation").hidden=true;$("#noReservation").hidden=false;}}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>tab(b.dataset.tab)));
-$("#reserve").addEventListener("click",()=>{if(!selection.size)return;const p=$("#selectionMessage");p.hidden=false;p.textContent="Solicitações de pagamento temporariamente indisponíveis.";});
+function openCheckout(){if(!selection.size)return;$("#checkoutNumbers").textContent=Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", ");$("#checkoutQuantity").textContent=String(selection.size);$("#checkoutAmount").textContent=money(selection.size);$("#checkoutModal").hidden=false;$("#closeCheckout").focus();}
+function closeCheckout(){$("#checkoutModal").hidden=true;$("#reserve").focus()}
+$("#reserve").addEventListener("click",openCheckout);
+$("#closeCheckout").addEventListener("click",closeCheckout);
+$("#checkoutReturn").addEventListener("click",closeCheckout);
+$("#checkoutModal").addEventListener("click",e=>{if(e.target===$("#checkoutModal"))closeCheckout()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#checkoutModal").hidden)closeCheckout()});
 $("#cancel").addEventListener("click",()=>{expiry=0;$("#clock").textContent="03:00";$("#activeReservation").hidden=true;$("#noReservation").hidden=false;selection.clear();render();tab("numeros")});
 
 const eventToggle=document.getElementById("eventToggle");
