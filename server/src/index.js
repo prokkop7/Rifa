@@ -1,14 +1,14 @@
 import "dotenv/config";
 import express from "express";
 import pg from "pg";
-import {verifyAsaasConnection,verifyAsaasWebhookToken,createCommercialCheckout} from "./asaas.js";
+import {verifyAsaasConnection,verifyAsaasProductionConnection,verifyAsaasWebhookToken,createCommercialCheckout} from "./asaas.js";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import {timingSafeEqual,randomBytes,createHash,randomUUID,scrypt as scryptCallback} from "node:crypto";
 import {promisify} from "node:util";
 import {fileURLToPath} from "node:url";
-import {getAsaasSettings,saveAsaasSettings,deleteAsaasSettings,validateAsaasSandboxSettings} from "./asaas-settings.js";
+import {getAsaasSettings,saveAsaasSettings,deleteAsaasSettings,validateAsaasSettings,getActiveAsaasEnvironment,setActiveAsaasEnvironment} from "./asaas-settings.js";
 const scrypt=promisify(scryptCallback);
 
 const required=["DATABASE_URL","APP_ORIGIN","ADMIN_API_KEY"];
@@ -224,26 +224,45 @@ for(const [route,file,type] of [
 ]){
  app.get(route,requireSecureAdminSetup,(req,res)=>res.type(type).sendFile(fileURLToPath(new URL(file,import.meta.url))));
 }
+// Separate credentials for sandbox and production. Never return stored secrets.
+const asaasEnv=req=>req.query.environment||req.body?.environment||"sandbox";
+const asaasValidEnv=e=>e==="sandbox"||e==="production";
 app.get("/api/admin/asaas/status",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ const environment=asaasEnv(req);
+ if(!asaasValidEnv(environment))return error(res,400,"Ambiente inválido");
  try{
-  const creds=await getAsaasSettings(pool);
-  if(!creds)return res.json({configured:false,connected:false,environment:"sandbox"});
-  const result=await verifyAsaasConnection(creds.apiKey);
-  res.json({...result,updatedAt:creds.updatedAt});
+  const creds=await getAsaasSettings(pool,environment);
+  const activeEnvironment=await getActiveAsaasEnvironment(pool);
+  if(!creds)return res.json({configured:false,connected:false,environment,activeEnvironment,paymentsEnabled:false});
+  const result=environment==="production"?await verifyAsaasProductionConnection(creds.apiKey):await verifyAsaasConnection(creds.apiKey);
+  res.json({...result,updatedAt:creds.updatedAt,activeEnvironment,paymentsEnabled:false});
  }catch(e){next(e)}
 });
 app.post("/api/admin/asaas/config",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
- const issue=validateAsaasSandboxSettings(req.body);
+ const environment=asaasEnv(req);
+ if(!asaasValidEnv(environment))return error(res,400,"Ambiente inválido");
+ const issue=validateAsaasSettings(req.body,environment);
  if(issue)return error(res,400,issue);
  try{
-   const result=await verifyAsaasConnection(req.body.apiKey);
-   if(!result.connected)return error(res,422,"Chave não validada no Sandbox. Verifique a chave e a conta.");
-   const saved=await saveAsaasSettings(pool,{apiKey:req.body.apiKey,webhookToken:req.body.webhookToken});
-   res.status(201).json({...saved,connected:true});
+  const result=environment==="production"?await verifyAsaasProductionConnection(req.body.apiKey):await verifyAsaasConnection(req.body.apiKey);
+  if(!result.connected)return error(res,422,"Chave não validada no ambiente "+environment+". Verifique a conta e a chave.");
+  const saved=await saveAsaasSettings(pool,{apiKey:req.body.apiKey,webhookToken:req.body.webhookToken},environment);
+  res.status(201).json({...saved,connected:true,paymentsEnabled:false});
  }catch(e){next(e)}
 });
 app.delete("/api/admin/asaas/config",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
- try{res.json(await deleteAsaasSettings(pool))}catch(e){next(e)}
+ const environment=asaasEnv(req);
+ if(!asaasValidEnv(environment))return error(res,400,"Ambiente inválido");
+ try{res.json(await deleteAsaasSettings(pool,environment))}catch(e){next(e)}
+});
+app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ const environment=req.body?.environment;
+ if(!asaasValidEnv(environment))return error(res,400,"Ambiente inválido");
+ try{
+  // Pure administrative selection. It does not change checkout's sandbox-only route.
+  if(environment==="production"&&!await getAsaasSettings(pool,"production"))return error(res,409,"Configure a chave de produção antes de selecioná-la");
+  res.json(await setActiveAsaasEnvironment(pool,environment));
+ }catch(e){next(e)}
 });
 // Receive commercial payment events only; never allocate campaign numbers via payment events.
 // Only a staging administrator can create a standalone commercial sale checkout.
