@@ -88,3 +88,11 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Para adicionar fotos reais, envie arquivos JPEG para os dois caminhos acima (em GitHub > Add file > Upload files). Não usar imagens de outros modelos como se fossem fotos dos prêmios.
 - O backend tem `database/002_reservations.sql` com reservas de três minutos para campanhas gratuitas autorizadas; a migração precisa ser aplicada no PostgreSQL. O frontend público ainda não consome essa API.
 - Para operação real, integrar sessão autenticada, consulta de reservas, expiração e confirmação transacional; criar testes de concorrência e proteção contra reservas abusivas.
+
+## Conexão Asaas Sandbox
+- Defina `ASAAS_ENV=sandbox`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no arquivo `server/.env` privado (nunca no frontend ou GitHub).
+- `GET /api/admin/asaas/status` com Bearer `ADMIN_API_KEY` testa a conexão no Sandbox via `GET /v3/myAccount/status/`. Retorna apenas status, sem dados financeiros.
+- `POST /api/webhooks/asaas` valida o token em `asaas-access-token` e grava eventos idempotentemente em `payment_events`; o evento ainda NÃO efetiva pagamento no banco nem concede participações.
+- Configure o webhook apenas depois de hospedar o backend em HTTPS. Os eventos não devem ser tratados como comprovante de pagamento sem conciliação.
+- Produção, criação de cobrança, conversão de moeda e vinculação da campanha não estão ativadas. Confirme elegibilidade da conta e aprovação do Asaas para o negócio/país.
+- Use credenciais distintas para Sandbox e produção. A chave de API nunca deve ser colada no chat ou gravada no código público.
