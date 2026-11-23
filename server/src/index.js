@@ -116,6 +116,51 @@ try{const r=await pool.query("insert into organizers(owner_user_id,display_name)
 app.post("/api/admin/campaigns",auth,async(req,res,next)=>{const {organizerId,title,description,kind,numberCount}=req.body||{};
 if(!uuid(organizerId)||typeof title!=="string"||title.trim().length<4||title.length>150||!["demo","authorized_free_promotion","authorized_osc"].includes(kind)||!Number.isInteger(numberCount)||numberCount<1||numberCount>100000)return error(res,400,"Dados inválidos");
 try{const r=await pool.query("insert into campaigns(organizer_id,title,description,kind,number_count) values($1,$2,$3,$4,$5) returning id,status",[organizerId,title.trim(),String(description||"").slice(0,4000),kind,numberCount]);res.status(201).json(r.rows[0])}catch(e){next(e)}});
+
+/* Staging-only system administrator endpoints. Do not expose the master API key to a browser. */
+app.get("/api/admin/overview",auth,async(req,res,next)=>{
+ try{
+  const [organizers,campaigns,participants,entries]=await Promise.all([
+   pool.query("select count(*)::int as n from organizers"),
+   pool.query("select count(*)::int as n from campaigns"),
+   pool.query("select count(*)::int as n from participants"),
+   pool.query("select count(*)::int as n from entries")
+  ]);
+  res.json({organizers:organizers.rows[0].n,campaigns:campaigns.rows[0].n,participants:participants.rows[0].n,entries:entries.rows[0].n});
+ }catch(e){next(e)}
+});
+app.get("/api/admin/organizers",auth,async(req,res,next)=>{
+ try{const r=await pool.query("select id,display_name,created_at from organizers order by created_at desc limit 100");res.json({organizers:r.rows})}catch(e){next(e)}
+});
+app.get("/api/admin/campaigns",auth,async(req,res,next)=>{
+ try{const r=await pool.query(\`select c.id,c.title,c.description,c.kind,c.status,c.number_count,c.created_at,o.display_name as organizer,
+ (select count(*)::int from entries e where e.campaign_id=c.id) as occupied,
+ (select count(*)::int from prizes p where p.campaign_id=c.id) as prize_count
+ from campaigns c join organizers o on o.id=c.organizer_id order by c.created_at desc limit 200\`);
+ res.json({campaigns:r.rows})}catch(e){next(e)}
+});
+app.get("/api/admin/campaigns/:id/entries",auth,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"ID inválido");
+ try{
+  const r=await pool.query(\`select e.id,e.number,e.created_at,p.full_name,p.phone_e164,p.social_network,p.social_handle
+   from entries e join participants p on p.id=e.participant_id where e.campaign_id=$1 order by e.number limit 100000\`,[req.params.id]);
+  res.json({entries:r.rows});
+ }catch(e){next(e)}
+});
+app.post("/api/admin/campaigns/:id/prizes",auth,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"ID inválido");
+ const {label,specs,position,imageUrl}=req.body||{};
+ if(typeof label!=="string"||label.trim().length<2||label.length>120||String(specs||"").length>1000||!Number.isInteger(position)||position<1||position>50)return error(res,400,"Dados inválidos");
+ if(imageUrl&&(!/^https:\/\/[a-z0-9.-]+\/\S+$/i.test(imageUrl)||String(imageUrl).length>2000))return error(res,400,"URL de imagem inválida");
+ try{
+  const r=await pool.query(\`insert into prizes(campaign_id,label,specs,position,image_url)
+   select id,$2,$3,$4,$5 from campaigns where id=$1 and status='draft'
+   returning id,label,specs,position,image_url\`,[req.params.id,label.trim(),String(specs||"").trim(),position,imageUrl||null]);
+  if(!r.rowCount)return error(res,409,"Campanha não encontrada ou não está em rascunho");
+  res.status(201).json({prize:r.rows[0]});
+ }catch(e){if(e.code==="23505")return error(res,409,"Já existe prêmio nessa posição");next(e)}
+});
+
 app.use((err,req,res,next)=>{console.error("API error",err.code||err.message);res.status(500).json({error:"Erro interno"})});
 const port=Number(process.env.PORT||3000);app.listen(port,()=>console.log("API running on port "+port));
 process.on("SIGTERM",async()=>{await pool.end();process.exit(0)});
