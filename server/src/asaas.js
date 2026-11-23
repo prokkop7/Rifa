@@ -4,14 +4,14 @@ import { timingSafeEqual } from "node:crypto";
 const API = "https://api-sandbox.asaas.com/v3";
 const CHECKOUT_BASE = "https://asaas.com/checkoutSession/show?id=";
 
-function settings() {
+function settings(apiKeyOverride) {
   if(process.env.ASAAS_ENV !== "sandbox") throw Error("Only Asaas sandbox is enabled");
-  if(!process.env.ASAAS_API_KEY) throw Error("ASAAS_API_KEY not configured");
-  return {"accept":"application/json","content-type":"application/json","access_token":process.env.ASAAS_API_KEY,"User-Agent":"AcoesPlatform/0.2.0"};
+  if(!(apiKeyOverride||process.env.ASAAS_API_KEY)) throw Error("ASAAS_API_KEY not configured");
+  return {"accept":"application/json","content-type":"application/json","access_token":apiKeyOverride||process.env.ASAAS_API_KEY,"User-Agent":"AcoesPlatform/0.2.0"};
 }
-async function request(path,opts={}) {
+async function request(path,opts={},apiKeyOverride) {
   const response=await fetch(API+path,{
-    ...opts,headers:{...settings(),...(opts.headers||{})},
+    ...opts,headers:{...settings(apiKeyOverride),...(opts.headers||{})},
     signal:AbortSignal.timeout(12000)
   });
   const data=await response.json().catch(()=>null);
@@ -22,9 +22,9 @@ async function request(path,opts={}) {
   }
   return data;
 }
-export async function verifyAsaasConnection(){
-  if(!process.env.ASAAS_API_KEY)return {configured:false,connected:false,environment:"sandbox"};
-  try {await request("/myAccount/status/");return {configured:true,connected:true,environment:"sandbox"}}
+export async function verifyAsaasConnection(apiKeyOverride){
+  if(!(apiKeyOverride||process.env.ASAAS_API_KEY))return {configured:false,connected:false,environment:"sandbox"};
+  try {await request("/myAccount/status/",{},apiKeyOverride);return {configured:true,connected:true,environment:"sandbox"}}
   catch(e){return {configured:true,connected:false,environment:"sandbox",httpStatus:e.status||null}}
 }
 export async function createCommercialCheckout({externalReference,title,amountCents,successUrl,cancelUrl,expiredUrl}){
@@ -46,8 +46,8 @@ export async function createCommercialCheckout({externalReference,title,amountCe
  if(typeof data?.id!=="string"||!/^[0-9a-z-]{12,120}$/i.test(data.id))throw Error("Asaas returned unexpected checkout id");
  return {checkoutId:data.id,checkoutUrl:CHECKOUT_BASE+encodeURIComponent(data.id),environment:"sandbox"};
 }
-export function verifyAsaasWebhookToken(supplied){
- const secret=process.env.ASAAS_WEBHOOK_TOKEN;
+export function verifyAsaasWebhookToken(supplied,tokenOverride){
+ const secret=tokenOverride||process.env.ASAAS_WEBHOOK_TOKEN;
  if(!secret||secret.length<32||typeof supplied!=="string")return false;
  const a=Buffer.from(secret),b=Buffer.from(supplied);
  return a.length===b.length&&timingSafeEqual(a,b);
