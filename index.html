@@ -422,7 +422,7 @@ const catalogEndpoint="https://painel-acoes.rayaconnect.com.br/api/actions";
 const actionNames={product:"Produto",money:"Dinheiro",service:"Serviço"};
 let currentCatalogAction=null,actionNumbers=null,actionPage=0,actionSelected=new Set(),myActionHold=null;
 const actionNumbersAPI="https://painel-acoes.rayaconnect.com.br";
-const ACTION_PAGE_SIZE=100;
+const ACTION_PAGE_SIZE=window.matchMedia("(max-width:600px)").matches?50:100;
 let checkoutMethod="automatic";
 const actionHoldMessage=msg=>{$("#actionHoldMessage").textContent=msg};
 async function loadCheckoutMethod(){
