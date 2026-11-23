@@ -17,7 +17,7 @@ async function runCheck(){
  const button=$("#check");button.disabled=true;
  try{
   const result=await call("GET","/api/admin/asaas/status?environment="+encodeURIComponent(currentEnvironment));
-  activeEnvironment=result.activeEnvironment||activeEnvironment;refreshTabs();$("#connection").textContent=result.connected?"Sandbox conectado":result.configured?"Falha de autenticação":"Não configurado";
+  activeEnvironment=result.activeEnvironment||activeEnvironment;refreshTabs();$("#connection").textContent=result.connected?(currentEnvironment==="sandbox"?"Sandbox conectado":"Produção conectada"):result.configured?"Falha de autenticação":"Não configurado";
   status(result.connected?"Conexão validada no ambiente "+currentEnvironment+".":"Nenhuma conexão ativa confirmada no ambiente "+currentEnvironment+".",result.connected);
  }catch(e){status(e.message)}finally{button.disabled=false}
 }
