@@ -73,12 +73,24 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 .event-toggle{color:#28485a}
 @media(min-width:700px){main{border-color:#d9e9ed}}
 
+
+.safety-mini{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:10px;color:#67868d;margin:0 0 6px}
+.safety-mini button{border:0;background:transparent;text-decoration:underline;text-underline-offset:3px;color:#267f7b;cursor:pointer;padding:2px;font:inherit}
+.action-catalog{display:grid;gap:10px;margin-top:14px}
+.action-catalog .glass{margin:0}
+.action-catalog .action-category{display:inline-block;color:#168477;font-size:10px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.action-catalog h3{margin:6px 0;font-size:16px}
+.action-catalog p{font-size:12px;line-height:1.5;color:#6a818e}
+.action-catalog button{margin-top:8px}
+.action-hero{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:#f1f8f8;margin-bottom:12px}
+.legal-content p{line-height:1.7;font-size:13px;color:#526d77}
 </style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
 <div class="kicker">Comunidade brasileira no Reino Unido</div><h1 class="headline">Dois notebooks.<br><span class="mint">Dois prêmios.</span></h1>
 <p class="lead">Conheça os prêmios do evento e escolha seus números.</p>
+<div class="safety-mini"><span>♧ Conexão HTTPS</span><button type="button" data-tab="seguranca">Segurança</button><button type="button" data-tab="termos">Termos de uso</button></div>
 <div class="prize-pair">
 <article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.jpg" alt="Notebook Dell original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Notebook Dell</h3><p>Core i5 · 4ª geração<br>4 GB RAM · SSD 240 GB</p></div></article>
 <article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.jpg" alt="Notebook HP original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>Notebook HP</h3><p>Core i3 · 7ª geração<br>8 GB RAM · SSD 240 GB</p></div></article>
@@ -109,12 +121,31 @@ main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#d
 <button class="button" type="button" data-tab="numeros">Escolher números</button>
 </div>
 </article>
-<p id="emptyEvents" class="empty-events" hidden>Nenhum evento nesta categoria.</p>
+<div id="actionsCatalog" class="action-catalog" aria-live="polite"></div><p id="emptyEvents" class="empty-events" hidden>Nenhum evento nesta categoria.</p>
 </section>
 <section id="numeros" class="panel" aria-label="Números"><div class="kicker">Etapa 01 • Escolha</div><h1 class="headline">Escolha seus <span class="mint">números</span></h1><div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot selected"></i>Selecionado</span></div><div id="grid" class="grid" aria-label="Grade de 100 números"></div>
 <div class="glass"><div class="sum"><div><div class="label">Selecionados</div><strong id="count">0 números</strong></div><div style="text-align:right"><div class="label">Valor total</div><strong id="total" class="mint">R$ 0,00</strong></div></div><button class="button" id="reserve" disabled>Comprar</button></div></section>
 <section id="reserva" class="panel" aria-label="Reserva"><div class="kicker">Acompanhamento</div><h1 class="headline">Minha <span class="mint">reserva</span></h1><div id="noReservation" class="glass empty-reservation"><div class="empty-icon">⌁</div><h3>Nenhuma reserva em andamento</h3><p>Quando uma solicitação de pagamento for iniciada, ela aparecerá aqui.</p><button class="button secondary" type="button" data-tab="numeros">Escolher números</button></div><div id="activeReservation" hidden><div class="glass"><div class="label">Tempo restante</div><div class="clock" id="clock">03:00</div><div class="sum"><span>Seus números</span><strong id="chosen">—</strong></div><div class="sum"><span>Valor total</span><strong id="reserveTotal">R$ 0,00</strong></div></div><button class="button" disabled>Continuar pagamento</button><button class="button secondary" id="cancel" type="button" style="margin-top:8px">Cancelar reserva</button></div></section>
 <section id="minhas" class="panel" aria-label="Minha área"><div class="kicker">Etapa 03 • Acompanhar</div><h1 class="headline">Minhas <span class="mint">participações</span></h1><div class="glass"><div class="label">Histórico de participações</div><h3 id="historyTitle">Nenhuma participação</h3><p id="historyText" class="lead">Você ainda não possui participações registradas.</p></div><div class="notice">Você poderá acompanhar aqui os eventos de que participou, seus números e resultados.</div></section>
+<section id="acao" class="panel" aria-label="Detalhes da ação">
+<div class="kicker" id="actionCategory">Ação</div><h1 class="headline" id="actionHeadline">Detalhes da ação</h1>
+<div class="glass"><img id="actionHero" class="action-hero" alt="" hidden><p class="lead" id="actionDescription">Conheça os detalhes.</p>
+<div class="sum"><span>Números previstos</span><strong id="actionTotal">—</strong></div>
+<div class="notice">Prévia informativa. Inscrições e compras de números não estão habilitadas para esta ação.</div>
+<button type="button" class="button secondary" data-tab="eventos" style="margin-top:12px">Voltar às ações</button></div>
+</section>
+<section id="termos" class="panel" aria-label="Termos de uso"><div class="kicker">Informações legais</div><h1 class="headline">Termos de uso</h1>
+<div class="glass legal-content"><p>Esta aplicação divulga informações e prévias de ações. A exibição de números, prêmios e valores não constitui uma oferta ativa de venda, inscrição ou garantia de premiação.</p>
+<p>Uma ação somente poderá receber inscrições quando houver regulamento específico, condições de elegibilidade, identificação do responsável, período de participação e autorização aplicável, quando exigida.</p>
+<p>Os participantes devem fornecer informações verdadeiras, respeitar as regras do evento e verificar as condições antes de participar. Informações e ações podem ser atualizadas, suspensas ou retiradas por motivo legal ou operacional.</p>
+<p>Não insira dados bancários, senhas ou informações sensíveis fora dos formulários oficiais. Para dúvidas, utilize os canais de contato indicados no regulamento da ação, quando publicados.</p></div>
+<button type="button" class="button secondary" data-tab="inicio">Voltar</button></section>
+<section id="seguranca" class="panel" aria-label="Privacidade e segurança"><div class="kicker">Proteção e privacidade</div><h1 class="headline">Segurança</h1>
+<div class="glass legal-content"><p><strong>Conexão HTTPS:</strong> a página utiliza HTTPS quando acessada pelo endereço oficial. Isso protege o transporte de dados, mas não constitui garantia absoluta contra fraudes.</p>
+<p><strong>Pagamentos:</strong> quando uma modalidade de cobrança for autorizada e habilitada, a confirmação ocorrerá por meio do provedor de pagamento e de verificação no servidor. Não envie Pix para chaves recebidas por mensagens não verificadas.</p>
+<p><strong>Dados pessoais:</strong> dados solicitados devem ser limitados aos necessários para identificação, contato, prevenção de fraude e exigências do provedor. Não compartilhe senhas, códigos de acesso ou documentos em mensagens.</p>
+<p><strong>Sobre o SSL:</strong> SSL é uma denominação antiga; o protocolo utilizado nas conexões HTTPS modernas é TLS. O cadeado confirma a conexão criptografada com o domínio, não a legitimidade de um evento.</p></div>
+<button type="button" class="button secondary" data-tab="inicio">Voltar</button></section>
 </div>
 <nav class="bottom" aria-label="Abas principais">
 <button class="tab" type="button" data-tab="inicio" aria-selected="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-7H9v7H3z"/></svg>Início</button>
@@ -155,5 +186,43 @@ document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListen
  let shown=0;document.querySelectorAll(".event-item").forEach(item=>{const visible=filter==="todos"||item.dataset.status===filter;item.hidden=!visible;if(visible)shown++});
  document.getElementById("emptyEvents").hidden=shown!==0;
 }));
+const catalogEndpoint="https://painel-acoes.rayaconnect.com.br/api/actions";
+const actionNames={product:"Produto",money:"Dinheiro",service:"Serviço"};
+function showCatalogAction(a){
+ $("#actionCategory").textContent=actionNames[a.category]||"Ação";
+ $("#actionHeadline").textContent=a.title;
+ $("#actionDescription").textContent=a.description||"Detalhes em preparação.";
+ $("#actionTotal").textContent=String(a.number_count);
+ const img=$("#actionHero");
+ if(a.image_url&&a.image_url.startsWith("https://")){img.src=a.image_url;img.alt="Imagem da ação "+a.title;img.hidden=false}
+ else{img.hidden=true;img.removeAttribute("src")}
+ tab("acao");
+}
+async function loadCatalog(){
+ try{
+  const response=await fetch(catalogEndpoint,{headers:{Accept:"application/json"},cache:"no-store"});
+  if(!response.ok)throw Error("Catálogo indisponível");
+  const data=await response.json(),catalog=$("#actionsCatalog");
+  catalog.replaceChildren();
+  for(const a of data.actions||[]){
+   const item=document.createElement("article");item.className="glass";
+   const kind=document.createElement("div");kind.className="action-category";kind.textContent=actionNames[a.category]||"Ação";
+   const title=document.createElement("h3");title.textContent=a.title;
+   const p=document.createElement("p");p.textContent=(a.description||"").slice(0,210);
+   const btn=document.createElement("button");btn.type="button";btn.className="button secondary";btn.textContent="Ver detalhes";btn.addEventListener("click",()=>{history.replaceState(null,"","?acao="+encodeURIComponent(a.slug));showCatalogAction(a)});
+   item.append(kind,title,p,btn);catalog.append(item);
+  }
+  const slug=new URL(location.href).searchParams.get("acao");
+  if(slug&&/^[a-z0-9-]{8,90}$/.test(slug)){
+   const res=await fetch(catalogEndpoint+"/"+encodeURIComponent(slug),{cache:"no-store"});
+   if(res.ok){const single=await res.json();showCatalogAction(single.action)}
+   else{tab("eventos");}
+  }
+ }catch(err){console.warn("AÇÕES: catálogo indisponível",err.message)}
+}
+const selectedLegal=new URL(location.href).searchParams.get("legal");
+if(selectedLegal==="termos"||selectedLegal==="seguranca")tab(selectedLegal);
+loadCatalog();
+
 setInterval(tick,250);render();
 </script></body></html>
