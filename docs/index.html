@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081321"><title>AÇÕES • Dois notebooks</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f7fbfc"><title>AÇÕES • Dois notebooks</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#eef7ff;background:#06121f;--bg:#0c2030;--card:#142e3f;--line:#2d5060;--mint:#4ce2b0;--quiet:#9eb8c6;--red:#f5acac}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;}body{background:radial-gradient(ellipse at 15% 0%,#17465a 0,transparent 48%),radial-gradient(ellipse at 85% 90%,#101d3a 0,transparent 48%),#06121f}
@@ -44,6 +44,35 @@ main{position:relative}.checkout-sheet{background:linear-gradient(165deg,#153849
 .checkout-choice strong{font-size:14px}.checkout-choice p{font-size:11px;color:#adc9d2;margin:4px 0 0}.checkout-choice span{font-size:10px;color:#b4c3ca;white-space:nowrap}
 .checkout-note{font-size:12px;color:#b3c9d4;line-height:1.4}
 @media(min-width:700px){.checkout-shade{align-items:center;padding:18px}.checkout-sheet{max-height:calc(100% - 36px)}}
+
+/* AÇÕES: paleta clara, alegre e discreta */
+:root{color:#263f4f;background:#f7fbfc;--bg:#f6fafb;--card:#fff;--line:#dbe9ed;--mint:#177f77;--quiet:#718794;--red:#bb515e}
+body{background:radial-gradient(ellipse at 13% 5%,#dcf6ee 0,transparent 48%),radial-gradient(ellipse at 86% 96%,#fdebe2 0,transparent 46%),#f8fbfd}
+main{background:linear-gradient(160deg,#fff,#f7fcfd 67%,#fffaf7);border-color:#dce9ed;box-shadow:0 20px 72px #2b60721e}
+.brand,.headline{color:#284253}.brand span,.mint{color:#167c74}
+.pill{background:#e3f7f0;border-color:#bfe5d9;color:#207e72}
+.kicker,.event-chevron,.empty-reservation .empty-icon{color:#17867a}.lead{color:#697f8b}
+.glass{background:linear-gradient(145deg,#fff,#f9fdfd);border-color:#d9e9ec;box-shadow:0 6px 22px #416f7410}
+.thumb{background:linear-gradient(140deg,#e4f3f6,#f8e8de);border-color:#d5e6eb}.computer{color:#7b9eb2}
+.gift h3,.event-toggle h3{color:#2a4556}.gift p,.label,.hint,.legend{color:#667f8f}
+.metric{background:#eff9f7;border-color:#d7ebe8}.metric strong{color:#2b4b56}
+.button{background:#238d82;color:#fff}.button.secondary{background:#eef8f8;color:#2e6672;border-color:#d8e9eb}
+.num{background:#fff;border-color:#d6e4e9;color:#426173}.num[aria-pressed=true]{background:#239288;border-color:#239288;color:#fff}
+.dot{background:#d0dfe7}.dot.selected{background:#239288}
+.field label{color:#446b78}.field input,.field select{background:white;border-color:#d5e7eb;color:#29465a}
+.notice{background:#edf9f4;border-color:#d3e9e1;color:#577480}
+.bottom{background:#ffffffed;border-top-color:#dfe9ed;box-shadow:0 -5px 23px #456d6c0d}
+.tab{color:#7b929e}.tab[aria-selected=true]{color:#167c73;background:#e4f6ef}
+#inicio .prize-tile .thumb img{background:#eaf4f5}
+.event-filter{background:white;border-color:#d5e7e9;color:#64818b}.event-filter.active{background:#e1f5ed;border-color:#b7dfd3;color:#18796c}
+.event-status.preparing{background:#fff0e5;color:#a9704f}.event-details{border-top-color:#dbe8eb}.event-details .gift{background:#fbfefe}
+.checkout-shade{background:#183a4b70}.checkout-sheet{background:linear-gradient(160deg,#fff,#f4fbf9);border-color:#d8e7ea;color:#284557;box-shadow:0 20px 65px #22465940}
+.checkout-close{background:#eaf5f4;border-color:#d6e8e9;color:#386776}
+.checkout-summary{background:#f0f9f6;border-color:#d8eae6}
+.checkout-choice{background:white;border-color:#d9e8eb;color:#2e4b59}.checkout-choice p,.checkout-note{color:#6b838c}.checkout-choice span{color:#769198}
+.event-toggle{color:#28485a}
+@media(min-width:700px){main{border-color:#d9e9ed}}
+
 </style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
@@ -98,7 +127,7 @@ main{position:relative}.checkout-sheet{background:linear-gradient(165deg,#153849
 <div class="checkout-head"><div><div class="kicker">Resumo da seleção</div><h2 id="checkoutTitle">Finalizar participação</h2></div><button type="button" class="checkout-close" id="closeCheckout" aria-label="Fechar">×</button></div>
 <div class="checkout-summary"><div class="label">Números escolhidos</div><div id="checkoutNumbers" class="checkout-numbers">—</div><div class="sum"><span>Quantidade</span><strong id="checkoutQuantity">0</strong></div><div class="sum"><span>Valor apresentado</span><strong id="checkoutAmount" class="mint">R$ 0,00</strong></div></div>
 <div class="checkout-methods"><div class="label">Formas de participação</div>
-<div class="checkout-choice"><div><strong>Pagamento</strong><p>Pix ou cartão, quando habilitados para este evento.</p></div><span>Indisponível</span></div>
+<div class="checkout-choice"><div><strong>Pagamento</strong><p>Pix direto na aplicação, quando autorizado e habilitado.</p></div><span>Indisponível</span></div>
 <div class="checkout-choice"><div><strong>Participação gratuita</strong><p>A modalidade gratuita será exibida aqui quando o evento estiver habilitado.</p></div><span>Em preparação</span></div></div>
 <p class="checkout-note">Este evento ainda não está recebendo pagamentos ou inscrições.</p>
 <button type="button" class="button secondary" id="checkoutReturn">Voltar aos números</button>
