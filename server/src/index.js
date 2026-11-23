@@ -101,12 +101,34 @@ app.get("/api/actions/:slug",async(req,res,next)=>{
  }catch(e){next(e)}
 });
 // Temporary number holds for catalog previews. No charge, sale, or confirmed entry.
+// Reservation audit is only visible after secure administrator authentication.
+app.get("/api/admin/reservation-audit",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ const kind=String(req.query.type||""),slug=String(req.query.action||"");
+ const before=req.query.before===undefined?null:Number(req.query.before);
+ if((kind&&!["created","released","expired","conflict"].includes(kind))||
+  (slug&&!/^[a-z0-9-]{8,90}$/.test(slug))||
+  (before!==null&&(!Number.isSafeInteger(before)||before<1)))return error(res,400,"Filtro inválido");
+ try{
+  await pool.query("delete from action_number_holds where expires_at<=now()");
+  const q=await pool.query(
+   "select id,action_slug,participant_id,reservation_group,number,event_type,occurred_at from action_reservation_audit "+
+   "where ($1::text='' or event_type=$1) and ($2::text='' or action_slug=$2) and ($3::bigint is null or id<$3) "+
+   "order by id desc limit 101",[kind,slug,before]);
+  const hasMore=q.rows.length>100,events=q.rows.slice(0,100);
+  const summary=await pool.query(
+   "select event_type,count(*)::int as count from action_reservation_audit where ($1::text='' or action_slug=$1) group by event_type",[slug]);
+  res.set("Cache-Control","no-store");
+  res.json({events,hasMore,nextCursor:hasMore?events[events.length-1].id:null,
+   summary:Object.fromEntries(summary.rows.map(x=>[x.event_type,x.count]))});
+ }catch(e){next(e)}
+});
 app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
  try{
   const a=await pool.query("select id,number_count,max_numbers_per_person from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
   if(!a.rowCount)return error(res,404,"Ação não encontrada");
   const action=a.rows[0];
+  await pool.query("delete from action_number_holds where action_id=$1 and expires_at<=now()",[action.id]);
   const [holds,confirmed]=await Promise.all([
    pool.query("select number,expires_at from action_number_holds where action_id=$1 and expires_at>now()",[action.id]),
    pool.query("select number from action_number_confirmations where action_id=$1",[action.id])
@@ -119,6 +141,7 @@ app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
 });
 app.get("/api/me/action-holds",requireParticipant,async(req,res,next)=>{
  try{
+  await pool.query("delete from action_number_holds where expires_at<=now()");
   const r=await pool.query("select a.slug,a.title,h.number,h.reservation_group,h.expires_at from action_number_holds h join action_catalog a on a.id=h.action_id where h.participant_id=$1 and h.expires_at>now() order by h.expires_at asc,h.number asc limit 200",[req.participant.participant_id]);
   const groups=new Map();
   for(const h of r.rows){
@@ -130,6 +153,15 @@ app.get("/api/me/action-holds",requireParticipant,async(req,res,next)=>{
   res.json({holds:r.rows,reservations:[...groups.values()],serverTime:new Date().toISOString(),purchasesEnabled:false});
  }catch(e){next(e)}
 });
+async function auditHoldConflict(actionId,slug,participantId,numbers){
+ try{
+  if(!actionId||!Array.isArray(numbers))return;
+  await pool.query(
+   "insert into action_reservation_audit(action_id,action_slug,participant_id,number,event_type) "+
+   "select $1,$2,$3,n,'conflict' from unnest($4::int[]) as n",
+   [actionId,slug,participantId,numbers.filter(n=>Number.isInteger(n)&&n>0).slice(0,20)]);
+ }catch(e){console.error("Reservation audit write failed",e.message)}
+}
 const previewHoldLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:"draft-7",legacyHeaders:false});
 app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
@@ -137,11 +169,13 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
  if(!Array.isArray(numbers)||!numbers.length||numbers.length>20||!numbers.every(Number.isInteger)||new Set(numbers).size!==numbers.length)
   return error(res,400,"Escolha entre 1 e 20 números distintos");
  const client=await pool.connect();
+ let auditActionId=null,auditPid=null;
  try{
   await client.query("BEGIN");
   const a=await client.query("select id,number_count,max_numbers_per_person from action_catalog where slug=$1 and state='preview' for update",[req.params.slug]);
   if(!a.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
   const action=a.rows[0],pid=req.participant.participant_id;
+  auditActionId=action.id;auditPid=pid;
   if(numbers.some(n=>n<1||n>action.number_count)||numbers.length>action.max_numbers_per_person){
    await client.query("ROLLBACK");return error(res,400,"Número fora do intervalo ou limite individual excedido");
   }
@@ -149,12 +183,12 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
   await client.query("delete from action_number_holds where action_id=$1 and expires_at<=now()",[action.id]);
   const existing=await client.query("select number from action_number_holds where action_id=$1 and participant_id=$2",[action.id,pid]);
   const ownerNumbers=new Set(existing.rows.map(r=>r.number));
-  if(ownerNumbers.size){await client.query("ROLLBACK");return error(res,409,"Você já possui uma reserva temporária nesta ação. Libere-a ou aguarde a expiração.")}
+  if(ownerNumbers.size){await client.query("ROLLBACK");await auditHoldConflict(auditActionId,req.params.slug,auditPid,numbers);return error(res,409,"Você já possui uma reserva temporária nesta ação. Libere-a ou aguarde a expiração.")}
   if(new Set([...ownerNumbers,...numbers]).size>action.max_numbers_per_person){
    await client.query("ROLLBACK");return error(res,409,"Limite por participante atingido; libere a seleção anterior");
   }
   const occupied=await client.query("select number from action_number_holds where action_id=$1 and number=any($2::int[]) union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
-  if(occupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Um ou mais números já estão reservados ou confirmados")}
+  if(occupied.rowCount){await client.query("ROLLBACK");await auditHoldConflict(auditActionId,req.params.slug,auditPid,numbers);return error(res,409,"Um ou mais números já estão reservados ou confirmados")}
   const group=randomUUID(),expiresAt=new Date(Date.now()+180000);
   for(const number of numbers){
    await client.query("insert into action_number_holds(action_id,participant_id,number,reservation_group,expires_at) values($1,$2,$3,$4,$5)",[action.id,pid,number,group,expiresAt]);
@@ -165,7 +199,7 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
    temporarySelection:true,confirmationEnabled:false});
  }catch(e){
   await client.query("ROLLBACK").catch(()=>{});
-  if(e.code==="23505")return error(res,409,"Número reservado por outro participante");
+  if(e.code==="23505"){await auditHoldConflict(auditActionId,req.params.slug,auditPid,numbers);return error(res,409,"Número reservado por outro participante")}
   next(e);
  }finally{client.release()}
 });
