@@ -225,7 +225,9 @@ app.post("/api/admin/commercial-checkouts",auth,async(req,res,next)=>{
     cancelUrl:back+"/?checkoutReturn=cancel&order="+encodeURIComponent(orderId),
     expiredUrl:back+"/?checkoutReturn=expired&order="+encodeURIComponent(orderId)
   };
-  const checkout=await createCommercialCheckout({externalReference,title:description.trim(),amountCents,...callbacks});
+  const providerSettings=await getAsaasSettings(pool);
+  if(!providerSettings)throw Error("Asaas Sandbox não configurado");
+  const checkout=await createCommercialCheckout({externalReference,title:description.trim(),amountCents,...callbacks,apiKey:providerSettings.apiKey});
   await pool.query("update commercial_orders set provider_checkout_id=$2,status='pending' where id=$1",[orderId,checkout.checkoutId]);
   res.status(201).json({orderId,checkoutUrl:checkout.checkoutUrl,checkoutId:checkout.checkoutId,environment:"sandbox",paid:false});
  }catch(e){
