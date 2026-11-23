@@ -39,3 +39,17 @@ Use um UUID do usuário administrador do futuro provedor de autenticação.
 - Atualmente a interface de produção **não** mostra fotos reais; os prêmios vêm da tabela `prizes` e ainda não existe upload de imagens.
 - O retorno de `participantId` não é uma credencial de acesso. É necessário implementar identidade verificada, sessão segura e histórico privado antes de liberar a área do participante.
 - O código não deve ser considerado pronto para internet pública sem testes, revisão da conformidade da promoção e proteção contra abuso, inclusive verificação de identidade e limites por participante.
+
+
+## Autenticação de participantes (etapa atual)
+- `conta.html`: criação de conta, login, consulta de histórico e logout.
+- `app.html`: exige token de sessão válido para confirmar inscrições gratuitas.
+- `POST /api/auth/register`: cria conta para telefone ainda não registrado. **Não verifica a posse do telefone**.
+- `POST /api/auth/login`: autentica com senha e retorna token aleatório revogável de 7 dias.
+- `GET /api/me`: retorna dados da conta autenticada.
+- `GET /api/me/entries`: retorna somente participações da conta autenticada.
+- `POST /api/auth/logout`: revoga a sessão no banco.
+- Os tokens ficam no `sessionStorage` da aba e não no banco em texto puro. Há exigência de HTTPS em produção.
+- A criação de conta requer senha de pelo menos 12 caracteres. Uma implementação de produção deverá adicionar verificação de telefone (OTP), recuperação de senha, proteção adicional contra tentativas de login distribuídas, revisão de privacidade e consentimento e testes.
+- O schema foi alterado. Docker inicializa `database/schema.sql` somente em um banco **novo**; bancos existentes precisam aplicar somente as instruções adicionais de migração, sem recriar tabelas nem apagar dados.
+- Não envie o identificador de participante como prova de identidade; todas as consultas privadas exigem sessão.
