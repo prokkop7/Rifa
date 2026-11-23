@@ -45,7 +45,15 @@
 <label for="actionDescription">Descrição e condições do prêmio</label><textarea id="actionDescription" rows="3" maxlength="3000" placeholder="Detalhes, condições e entrega"></textarea>
 <label for="actionCount">Quantidade de números para apresentação</label><input id="actionCount" type="number" min="1" max="10000" value="100" required>
 <label for="actionImage">Link HTTPS da imagem (opcional)</label><input id="actionImage" type="url" placeholder="https://..." maxlength="1200">
-<div class="actions"><button class="primary" type="submit">Criar ação e gerar link</button><button type="button" id="actionReload" class="outline">Atualizar ações</button></div>
+<label for="actionPrice">Valor apresentado por número (R$)</label><input id="actionPrice" type="number" step="0.01" min="0" max="1000000" value="0.00" required><p class="help">Campo informativo de planejamento. Não habilita pagamento, reserva ou compra.</p>
+<label for="actionMax">Máximo de números por participante</label><input id="actionMax" type="number" min="1" max="10000" value="10" required>
+<label for="actionPrize">Detalhes do prêmio / entrega</label><textarea id="actionPrize" rows="3" maxlength="3000" placeholder="Produto, valor, condições do serviço ou entrega"></textarea>
+<label for="actionRules">Regras e condições específicas</label><textarea id="actionRules" rows="4" maxlength="6000" placeholder="Elegibilidade, organização, critérios, prazos e condições"></textarea>
+<label for="actionRegulation">Link HTTPS para regulamento completo (opcional)</label><input id="actionRegulation" type="url" maxlength="1200" placeholder="https://...">
+<label for="actionStart">Início previsto (opcional)</label><input id="actionStart" type="datetime-local">
+<label for="actionEnd">Término previsto (opcional)</label><input id="actionEnd" type="datetime-local">
+
+<div class="actions"><button class="primary" id="actionSave" type="submit">Criar ação e gerar link</button><button type="button" id="actionCancelEdit" class="outline" hidden>Cancelar edição</button><button type="button" id="actionReload" class="outline">Atualizar ações</button></div>
 </form>
 <p id="actionMessage" role="status" aria-live="polite"></p>
 <div id="actionList" class="action-list" aria-live="polite"></div>
