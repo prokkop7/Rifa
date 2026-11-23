@@ -6,12 +6,12 @@ function encryptionKey(){
  if(!/^[0-9a-f]{64}$/i.test(hex||""))throw Error("PROVIDER_SETTINGS_ENCRYPTION_KEY must be 32 bytes in hex");
  return Buffer.from(hex,"hex");
 }
-function seal(value){
+export function seal(value){
  const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",encryptionKey(),iv);
  const bytes=Buffer.concat([cipher.update(JSON.stringify(value),"utf8"),cipher.final()]);
  return [iv.toString("base64url"),cipher.getAuthTag().toString("base64url"),bytes.toString("base64url")].join(".");
 }
-function unseal(ciphertext){
+export function unseal(ciphertext){
  const fields=ciphertext.split(".");
  if(fields.length!==3)throw Error("Invalid provider settings");
  const [iv,tag,bytes]=fields.map(x=>Buffer.from(x,"base64url"));
