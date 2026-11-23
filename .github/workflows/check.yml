@@ -49,7 +49,7 @@ jobs:
       - name: Check Asaas sandbox adapter (mocked, no real charge)
         working-directory: server
         run: node test/asaas.mjs
-      - name: Test encrypted Asaas settings
+      - name: Check inline Sandbox Pix API contract (mocked)\n        working-directory: server\n        run: node test/pix-demo.mjs\n      - name: Test encrypted Asaas settings
         working-directory: server
         run: node test/asaas-settings.mjs
       - name: Initialize SQL and check API health
