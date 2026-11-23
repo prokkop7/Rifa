@@ -7,6 +7,7 @@
 <button type="button" class="admin-nav-btn" data-admin-page="actions"><span class="nav-symbol" aria-hidden="true">▤</span> Ações</button>
 <button type="button" class="admin-nav-btn" data-admin-page="reservations"><span class="nav-symbol" aria-hidden="true">◷</span> Reservas</button>
 <button type="button" class="admin-nav-btn" data-admin-page="pix"><span class="nav-symbol" aria-hidden="true">▦</span> Pix Sandbox</button>
+<button type="button" class="admin-nav-btn" data-admin-page="checkout"><span class="nav-symbol" aria-hidden="true">☷</span> Finalização</button>
 <button type="button" class="admin-nav-btn" data-admin-page="asaas"><span class="nav-symbol" aria-hidden="true">⚙</span> Asaas</button>
 <button type="button" class="admin-nav-btn" data-admin-page="security"><span class="nav-symbol" aria-hidden="true">◇</span> Segurança</button>
 </nav>
@@ -16,6 +17,7 @@
 <button type="button" class="dashboard-tile" data-go-page="actions"><span class="tile-icon" aria-hidden="true">▤</span><strong>Gerenciar ações</strong><span>Cadastros, prêmios, regras e links individuais</span></button>
 <button type="button" class="dashboard-tile" data-go-page="reservations"><span class="tile-icon" aria-hidden="true">◷</span><strong>Reservas</strong><span>Auditoria, expiração e conflitos de números</span></button>
 <button type="button" class="dashboard-tile" data-go-page="pix"><span class="tile-icon" aria-hidden="true">▦</span><strong>Pix Sandbox</strong><span>Cobranças de demonstração e conciliação</span></button>
+<button type="button" class="dashboard-tile" data-go-page="checkout"><span class="tile-icon" aria-hidden="true">☷</span><strong>Formas de finalização</strong><span>Pagamento automático ou atendimento WhatsApp/Raya</span></button>
 <button type="button" class="dashboard-tile" data-go-page="asaas"><span class="tile-icon" aria-hidden="true">⚙</span><strong>Ambiente Asaas</strong><span>Selecionar Sandbox ou Produção e verificar credenciais</span></button>
 </div>
 <div class="admin-info-row"><div><strong>Ambiente preferido</strong><span id="dashboardEnvironment">Sandbox</span></div><div><strong>Checkout comercial</strong><span id="dashboardCheckoutMode">Sandbox</span></div></div>
@@ -62,6 +64,34 @@
 <div class="actions"><button class="outline" id="pixLedgerRefresh" type="button">Atualizar cobranças</button></div>
 <p id="pixLedgerMessage" role="status" aria-live="polite"></p>
 <div id="pixLedgerList" class="pix-ledger-list"></div>
+</section>
+<section class="panel compact" data-panel-page="checkout" data-auth-only hidden id="checkoutConfigPanel">
+<h2>Forma de finalização</h2>
+<p class="sub">Escolha como a aplicação deve receber as solicitações de números. O modo WhatsApp registra reservas e solicita conferência manual; não confirma pagamentos automaticamente.</p>
+<form id="checkoutModeForm" autocomplete="off">
+<label for="checkoutMode">Método selecionado</label>
+<select id="checkoutMode" required>
+<option value="automatic">Pagamento automático (Asaas)</option>
+<option value="whatsapp">Reserva + atendimento pelo WhatsApp (Raya)</option>
+</select>
+<p class="help" id="checkoutModeNote">O checkout automático de números ainda precisa de integração específica. A configuração de ambiente comercial Asaas permanece independente.</p>
+<label for="rayaEndpoint">URL da API de mensagens Raya</label>
+<input id="rayaEndpoint" type="url" required maxlength="200" value="https://api.rayaconnect.com.br/v2/api/external/9f945521-57eb-426a-8207-f4e9cc69b8de" autocomplete="off">
+<label for="rayaDestination">WhatsApp que recebe os pedidos</label>
+<input id="rayaDestination" type="tel" required value="5522999397655" maxlength="16" inputmode="tel">
+<label for="rayaBearer">Bearer token da Raya</label>
+<input id="rayaBearer" type="password" autocomplete="new-password" placeholder="Cole o token para cadastrar ou substituir" maxlength="2048">
+<p class="help" id="rayaTokenState">Token ainda não verificado. Depois de salvo, o segredo não será exibido.</p>
+<div class="actions"><button type="submit" class="primary" id="checkoutModeSave">Salvar configurações</button><button class="outline" type="button" id="checkoutModeRefresh">Recarregar</button></div>
+</form>
+<p id="checkoutConfigMessage" role="status" aria-live="polite"></p>
+</section>
+<section class="panel compact" data-panel-page="checkout" data-auth-only hidden id="manualOrdersPanel">
+<h2>Pedidos recebidos via WhatsApp</h2>
+<p class="sub">Solicitações reservadas por até 24 horas. Sem confirmação automática de pagamento. Se a Raya não aceitar o envio, use Reenviar.</p>
+<div class="actions"><button type="button" class="outline" id="manualOrdersRefresh">Atualizar pedidos</button></div>
+<p id="manualOrdersMessage" role="status" aria-live="polite"></p>
+<div id="manualOrdersList" class="manual-orders-list"></div>
 </section>
 <section class="panel compact" data-panel-page="reservations" data-auth-only hidden id="reservationAuditPanel">
 <h2>Auditoria das reservas</h2>
