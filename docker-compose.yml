@@ -11,6 +11,9 @@ services:
     volumes:
       - acoes_db:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - ./database/002_reservations.sql:/docker-entrypoint-initdb.d/002-reservations.sql:ro
+      - ./database/003_asaas_checkout.sql:/docker-entrypoint-initdb.d/003-asaas-checkout.sql:ro
+      - ./database/004_provider_settings.sql:/docker-entrypoint-initdb.d/004-provider-settings.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U acoes -d acoes"]
       interval: 5s
