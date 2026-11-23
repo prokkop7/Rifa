@@ -35,6 +35,13 @@
 </div>
 <p id="pixMessage" aria-live="polite" role="status"></p>
 </section>
+<section class="panel compact" data-auth-only hidden id="pixLedgerPanel">
+<h2>Conciliação Pix · Sandbox</h2>
+<p class="sub">Pedidos de teste existentes. A consulta e a conciliação não criam novas cobranças e não estão vinculadas à aquisição de números.</p>
+<div class="actions"><button class="outline" id="pixLedgerRefresh" type="button">Atualizar cobranças</button></div>
+<p id="pixLedgerMessage" role="status" aria-live="polite"></p>
+<div id="pixLedgerList" class="pix-ledger-list"></div>
+</section>
 <section class="panel compact" data-auth-only hidden id="reservationAuditPanel">
 <h2>Auditoria das reservas</h2>
 <p class="sub">Histórico de seleção temporária, liberação, expiração e conflitos. Os identificadores são técnicos; não são exibidos dados de contato.</p>
