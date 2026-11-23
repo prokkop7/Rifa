@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import pg from "pg";
-import {verifyAsaasConnection,verifyAsaasProductionConnection,verifyAsaasWebhookToken,createCommercialCheckout} from "./asaas.js";
+import {verifyAsaasConnection,verifyAsaasProductionConnection,verifyAsaasWebhookToken,createCommercialCheckout,createSandboxPixCustomer,createSandboxPixPayment,getSandboxPixQr,getSandboxPixPayment} from "./asaas.js";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -264,6 +264,62 @@ app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAd
   res.json(await setActiveAsaasEnvironment(pool,environment));
  }catch(e){next(e)}
 });
+// Administratively gated Sandbox-only QR demonstration, unrelated to raffle entries.
+const pixDemoLimiter=rateLimit({windowMs:60*60*1000,limit:8,standardHeaders:"draft-7",legacyHeaders:false});
+function cleanCpf(raw){
+ const n=String(raw||"").replace(/\D/g,"");
+ if(!/^\d{11}$/.test(n)||/^(\d)\1{10}$/.test(n))return null;
+ for(let length=9;length<=10;length++){
+  const sum=[...n.slice(0,length)].reduce((s,d,i)=>s+Number(d)*(length+1-i),0);
+  const check=(sum*10)%11%10;
+  if(check!==Number(n[length]))return null;
+ }
+ return n;
+}
+app.post("/api/admin/pix-demo",requireSecureAdminSetup,sessionAdmin,pixDemoLimiter,async(req,res,next)=>{
+ if(process.env.ASAAS_ENV!=="sandbox")return error(res,503,"A demonstração Pix só funciona em Sandbox");
+ const name=String(req.body?.fullName||"").trim().replace(/\s+/g," ");
+ const cpfCnpj=cleanCpf(req.body?.cpf);
+ const mobilePhone=phone(req.body?.phone)?.slice(3);
+ if(name.length<3||name.length>100||!cpfCnpj||!mobilePhone)return error(res,400,"Informe nome completo, CPF válido e WhatsApp brasileiro");
+ const id=randomUUID(),userId=randomUUID();
+ try{
+  const key=(await getAsaasSettings(pool,"sandbox"))?.apiKey;
+  if(!key)return error(res,503,"Asaas Sandbox não configurado");
+  const recent=await pool.query("select count(*)::int n from sandbox_pix_demos where created_at>now()-interval '1 hour'");
+  if(recent.rows[0].n>=12)return error(res,429,"Limite temporário de demonstrações atingido");
+  await pool.query("insert into sandbox_pix_demos(id,user_id,external_reference) values($1,$2,$3)",[id,userId,id]);
+  const customerId=await createSandboxPixCustomer({name,cpfCnpj,mobilePhone,externalReference:userId,apiKey:key});
+  await pool.query("update sandbox_pix_demos set provider_customer_id=$2 where id=$1",[id,customerId]);
+  const payment=await createSandboxPixPayment({customer:customerId,externalReference:id,apiKey:key});
+  await pool.query("update sandbox_pix_demos set provider_payment_id=$2,status='pending' where id=$1",[id,payment.paymentId]);
+  const qr=await getSandboxPixQr(payment.paymentId,key);
+  res.status(201).json({orderId:id,userId,amountCents:500,environment:"sandbox",status:"pending",...qr});
+ }catch(e){
+  // Preserve any provider IDs for reconciliation; do not create raffle entries.
+  console.error("Pix demonstration setup failed",e.status||e.message);
+  await pool.query("update sandbox_pix_demos set status='failed' where id=$1 and provider_payment_id is null",[id]).catch(()=>{});
+  error(res,502,"Não foi possível gerar o Pix Sandbox. Verifique a configuração e tente novamente.");
+ }
+});
+app.get("/api/admin/pix-demo/:id",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
+ try{
+  const q=await pool.query("select id,user_id,provider_payment_id,status,amount_cents from sandbox_pix_demos where id=$1",[req.params.id]);
+  if(!q.rowCount)return error(res,404,"Pedido não encontrado");
+  const order=q.rows[0];
+  if(!order.provider_payment_id)return res.json({orderId:order.id,status:order.status,amountCents:order.amount_cents});
+  const key=(await getAsaasSettings(pool,"sandbox"))?.apiKey;
+  if(!key)return error(res,503,"Sandbox desconectado");
+  const payment=await getSandboxPixPayment(order.provider_payment_id,key);
+  if(["RECEIVED","CONFIRMED"].includes(payment.status)&&order.status!=="paid"){
+   await pool.query("update sandbox_pix_demos set status='paid',paid_at=coalesce(paid_at,now()) where id=$1 and status in ('pending','created')",[order.id]);
+  }
+  const current=await pool.query("select status from sandbox_pix_demos where id=$1",[order.id]);
+  res.json({orderId:order.id,status:current.rows[0].status,providerStatus:payment.status,amountCents:order.amount_cents});
+ }catch(e){next(e)}
+});
+
 // Receive commercial payment events only; never allocate campaign numbers via payment events.
 // Only a staging administrator can create a standalone commercial sale checkout.
 // There is intentionally no route from campaign numbers to this API.
@@ -333,6 +389,18 @@ app.post("/api/webhooks/asaas",async(req,res,next)=>{
    const inserted=await client.query(
     "insert into payment_events(provider,provider_event_id,commercial_order_id,payload) values('asaas',$1,$2,$3) on conflict(provider,provider_event_id) do nothing returning id",
     [evt.id,id,JSON.stringify(evt)]);
+   if(inserted.rowCount&&paymentId){
+     const demo=await client.query("select id from sandbox_pix_demos where provider_payment_id=$1 for update",[paymentId]);
+     if(demo.rowCount){
+       const did=demo.rows[0].id;
+       if(["PAYMENT_RECEIVED","PAYMENT_CONFIRMED"].includes(evt.event))
+         await client.query("update sandbox_pix_demos set status='paid',paid_at=coalesce(paid_at,now()) where id=$1 and status in ('pending','created')",[did]);
+       else if(evt.event==="PAYMENT_REFUNDED")
+         await client.query("update sandbox_pix_demos set status='refunded' where id=$1 and status='paid'",[did]);
+       else if(["PAYMENT_DELETED","PAYMENT_OVERDUE"].includes(evt.event))
+         await client.query("update sandbox_pix_demos set status='cancelled' where id=$1 and status in ('pending','created')",[did]);
+     }
+   }
    if(inserted.rowCount&&id){
      const paid=evt.event==="CHECKOUT_PAID";
      const failed=evt.event==="CHECKOUT_CANCELED"||evt.event==="CHECKOUT_EXPIRED";
