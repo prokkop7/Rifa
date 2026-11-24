@@ -112,6 +112,16 @@
 <label for="actionType">Tipo de ação</label>
 <select id="actionType" required><option value="product">Produto</option><option value="money">Dinheiro</option><option value="service">Serviço</option></select>
 <label for="actionTitle">Título da ação</label><input id="actionTitle" required minlength="4" maxlength="110" placeholder="Ex.: Notebook Dell">
+<div class="product-attributes"><h3>Informações do produto</h3>
+ <div class="product-form-grid">
+ <div><label for="actionBrand">Marca</label><input id="actionBrand" maxlength="80" placeholder="Dell, HP, Samsung..."></div>
+ <div><label for="actionModel">Modelo</label><input id="actionModel" maxlength="120" placeholder="Vostro, Latitude, ProBook..."></div>
+ </div>
+ <label for="actionCondition">Condição do produto</label>
+ <select id="actionCondition"><option value="unspecified">Não informada</option><option value="used">Usado</option><option value="new">Novo</option><option value="refurbished">Recondicionado</option></select>
+ <label for="actionConditionNotes">Conservação e marcas de uso</label>
+ <textarea id="actionConditionNotes" rows="2" maxlength="600" placeholder="Ex.: notebook usado, carcaça com riscos superficiais, funcionamento a conferir"></textarea>
+ </div>
 <label for="actionDescription">Descrição e condições do prêmio</label><textarea id="actionDescription" rows="3" maxlength="3000" placeholder="Detalhes, condições e entrega"></textarea>
 <label for="actionCount">Quantidade de números para apresentação</label><input id="actionCount" type="number" min="1" max="10000" value="100" required>
 <div class="action-media-editor">
