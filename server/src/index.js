@@ -88,14 +88,14 @@ app.post("/api/auth/logout",requireParticipant,async(req,res,next)=>{
 // Public previews only. Paid-number transactions remain unavailable.
 app.get("/api/actions",async(req,res,next)=>{
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,created_at from action_catalog where state='preview' order by created_at desc limit 100");
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,created_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where state='preview' order by created_at desc limit 100");
   res.set("Cache-Control","public, max-age=45");res.json({actions:q.rows,purchasesEnabled:false});
  }catch(e){next(e)}
 });
 app.get("/api/actions/:slug",async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
   if(!q.rowCount)return error(res,404,"Ação não encontrada");
   res.set("Cache-Control","public, max-age=45");res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
@@ -709,7 +709,7 @@ app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAd
 // Create, list and archive individual shareable action previews.
 // Administer configuration of individually linked action previews.
 // Prices are display-only. Payment routes do not allocate campaign numbers.
-const actionFields="id,slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,state,created_at";
+const actionFields="id,slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,state,created_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images";
 function parseActionInput(body){
  const title=String(body?.title||"").trim(),description=String(body?.description||"").trim();
  const prizeDetails=String(body?.prizeDetails||"").trim(),rulesText=String(body?.rulesText||"").trim();
@@ -730,6 +730,80 @@ function parseActionInput(body){
   (startsAt&&endsAt&&Date.parse(endsAt)<=Date.parse(startsAt)))return null;
  return {title,description,prizeDetails,rulesText,category,numberCount,priceCents,maxPerPerson,imageUrl:imageUrl||null,regulationUrl:regulationUrl||null,startsAt,endsAt};
 }
+const uploadPhotoLimiter=rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:"draft-7",legacyHeaders:false});
+function validImageBytes(buffer,mime){
+ if(mime==="image/jpeg")return buffer.length>4&&buffer[0]===0xff&&buffer[1]===0xd8&&buffer[buffer.length-2]===0xff&&buffer[buffer.length-1]===0xd9;
+ if(mime==="image/png")return buffer.length>12&&buffer.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"));
+ if(mime==="image/webp")return buffer.length>12&&buffer.toString("ascii",0,4)==="RIFF"&&buffer.toString("ascii",8,12)==="WEBP";
+ return false;
+}
+// Binary image API is separate from JSON action metadata and avoids filesystem persistence.
+app.get("/api/action-images/:id",async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,404,"Imagem não encontrada");
+ try{
+  const q=await pool.query("select i.mime_type,i.image_data from action_images i join action_catalog a on a.id=i.action_id where i.id=$1 and a.state='preview'",[req.params.id]);
+  if(!q.rowCount)return error(res,404,"Imagem não encontrada");
+  res.set({"Content-Type":q.rows[0].mime_type,"X-Content-Type-Options":"nosniff","Cache-Control":"public,max-age=1800","Content-Security-Policy":"default-src 'none'; sandbox"});
+  res.send(q.rows[0].image_data);
+ }catch(e){next(e)}
+});
+app.post("/api/admin/actions/:id/images",requireSecureAdminSetup,sessionAdmin,uploadPhotoLimiter,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Ação inválida");
+ const name=String(req.body?.filename||"foto").trim().slice(0,120);
+ const mime=String(req.body?.mime||"");
+ const raw=req.body?.base64;
+ if(typeof raw!=="string"||raw.length>2700000||!/^[a-zA-Z0-9+/]+={0,2}$/.test(raw)||name.length<1||
+  !["image/jpeg","image/png","image/webp"].includes(mime))return error(res,400,"Arquivo inválido (JPG, PNG ou WebP)");
+ const data=Buffer.from(raw,"base64");
+ if(data.length<100||data.length>2000000||!validImageBytes(data,mime))return error(res,400,"Imagem inválida ou acima de 2 MB");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const action=await client.query("select id from action_catalog where id=$1 for update",[req.params.id]);
+  if(!action.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
+  const count=await client.query("select count(*)::int as n from action_images where action_id=$1",[req.params.id]);
+  if(count.rows[0].n>=6){await client.query("ROLLBACK");return error(res,409,"Limite de seis fotos por ação")}
+  const cover=count.rows[0].n===0;
+  const out=await client.query("insert into action_images(action_id,filename,mime_type,image_data,is_cover,sort_order) values($1,$2,$3,$4,$5,$6) returning id,is_cover",
+   [req.params.id,name,mime,data,cover,count.rows[0].n]);
+  await client.query("COMMIT");
+  res.set("Cache-Control","no-store");
+  res.status(201).json({image:{id:out.rows[0].id,isCover:out.rows[0].is_cover,url:"/api/action-images/"+out.rows[0].id}});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
+ finally{client.release()}
+});
+app.post("/api/admin/actions/:id/images/:imageId/cover",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id)||!uuid(req.params.imageId))return error(res,400,"Imagem inválida");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const a=await client.query("select id from action_catalog where id=$1 for update",[req.params.id]);
+  if(!a.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
+  const image=await client.query("select id from action_images where id=$1 and action_id=$2",[req.params.imageId,req.params.id]);
+  if(!image.rowCount){await client.query("ROLLBACK");return error(res,404,"Foto não encontrada")}
+  await client.query("update action_images set is_cover=false where action_id=$1 and is_cover=true",[req.params.id]);
+  await client.query("update action_images set is_cover=true where id=$1",[req.params.imageId]);
+  await client.query("COMMIT");res.json({updated:true});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
+ finally{client.release()}
+});
+app.delete("/api/admin/actions/:id/images/:imageId",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id)||!uuid(req.params.imageId))return error(res,400,"Imagem inválida");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const a=await client.query("select id from action_catalog where id=$1 for update",[req.params.id]);
+  if(!a.rowCount){await client.query("ROLLBACK");return error(res,404,"Ação não encontrada")}
+  const target=await client.query("delete from action_images where action_id=$1 and id=$2 returning is_cover",[req.params.id,req.params.imageId]);
+  if(!target.rowCount){await client.query("ROLLBACK");return error(res,404,"Foto não encontrada")}
+  if(target.rows[0].is_cover){
+   const replacement=await client.query("select id from action_images where action_id=$1 order by sort_order,uploaded_at limit 1",[req.params.id]);
+   if(replacement.rowCount)await client.query("update action_images set is_cover=true where id=$1",[replacement.rows[0].id]);
+  }
+  await client.query("COMMIT");res.json({deleted:true});
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});next(e)}
+ finally{client.release()}
+});
 app.get("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  try{const q=await pool.query("select "+actionFields+" from action_catalog order by created_at desc limit 200");res.json({actions:q.rows})}catch(e){next(e)}
 });
