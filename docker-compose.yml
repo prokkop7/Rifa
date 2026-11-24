@@ -24,6 +24,7 @@ services:
       - ./database/012_manual_requests_raya.sql:/docker-entrypoint-initdb.d/012-manual-requests-raya.sql:ro
       - ./database/013_manual_approval.sql:/docker-entrypoint-initdb.d/013-manual-approval.sql:ro
       - ./database/014_action_images.sql:/docker-entrypoint-initdb.d/014-action-images.sql:ro
+      - ./database/015_product_details.sql:/docker-entrypoint-initdb.d/015-product-details.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U acoes -d acoes"]
       interval: 5s
