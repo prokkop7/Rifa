@@ -367,6 +367,25 @@ $("#rayaSendTest").addEventListener("click",async()=>{
  finally{button.disabled=false}
 });
 function manualOrderMessage(message){$("#manualOrdersMessage").textContent=message}
+const manualOrderStatusNames={
+ reserved:"Aguardando validação",approved:"Aprovado",rejected:"Não aprovado",
+ released:"Liberado",expired:"Expirado"
+};
+async function reviewManualOrder(order,decision){
+ const approving=decision==="approved";
+ const question=approving?
+  "Aprovar este pedido e manter os números "+order.numbers.join(", ")+" bloqueados? A aprovação manual não confirma pagamento.":
+  "Não aprovar o pedido e liberar imediatamente os números "+order.numbers.join(", ")+"?";
+ if(!confirm(question))return;
+ const note=prompt("Observação da validação (opcional):","") ;
+ if(note===null)return;
+ if(note.length>500){manualOrderMessage("Observação muito longa (máximo 500 caracteres).");return}
+ try{
+  const r=await call("POST","/api/admin/manual-requests/"+order.id+"/decision",{decision,note});
+  manualOrderMessage(r.status==="approved"?"Pedido aprovado; números mantidos bloqueados.":"Pedido não aprovado; números liberados.");
+  await loadManualOrders();
+ }catch(e){manualOrderMessage("Não foi possível registrar a decisão: "+e.message)}
+}
 async function loadManualOrders(){
  try{
   const data=await call("GET","/api/admin/manual-requests");
@@ -374,7 +393,7 @@ async function loadManualOrders(){
   manualOrderMessage(data.orders.length+" pedido(s) registrados.");
   for(const o of data.orders){
    const row=document.createElement("article");row.className="manual-order-row";
-   const title=document.createElement("strong");title.textContent=o.title+" · "+o.status.toUpperCase();
+   const title=document.createElement("strong");title.textContent=o.title+" · "+(manualOrderStatusNames[o.status]||o.status);
    const info=document.createElement("p");
    info.textContent="Pedido "+o.id.slice(0,8)+"… · Cliente: "+o.contact_name+
     " · WhatsApp: "+o.contact_phone.replace(/^\+/,"")+
@@ -383,7 +402,22 @@ async function loadManualOrders(){
    const meta=document.createElement("small");meta.textContent="Raya: "+o.notification_status+
     " · Criado em "+new Date(o.created_at).toLocaleString("pt-BR")+
     " · Até "+new Date(o.expires_at).toLocaleString("pt-BR");
+   if(o.reviewed_at){
+    const review=document.createElement("small");
+    review.textContent="Validado em "+new Date(o.reviewed_at).toLocaleString("pt-BR")+
+     (o.review_note?" · Observação: "+o.review_note:"");
+    row.append(review);
+   }
    const actions=document.createElement("div");actions.className="action-buttons";
+   if(o.status==="reserved"&&new Date(o.expires_at).getTime()>Date.now()){
+    const approve=document.createElement("button");approve.type="button";
+    approve.className="manual-approve";approve.textContent="Aprovar";
+    approve.addEventListener("click",()=>reviewManualOrder(o,"approved"));
+    const reject=document.createElement("button");reject.type="button";
+    reject.className="manual-reject";reject.textContent="Não aprovar · liberar";
+    reject.addEventListener("click",()=>reviewManualOrder(o,"rejected"));
+    actions.append(approve,reject);
+   }
    if(o.status==="reserved"&&o.notification_status==="failed"){
     const retry=document.createElement("button");retry.type="button";retry.className="outline";retry.textContent="Reenviar";
     retry.addEventListener("click",async()=>{
