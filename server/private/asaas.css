@@ -68,3 +68,24 @@ select{width:100%;border:1px solid #cedfe5;background:#fff;color:#294657;border-
 .manual-order-row .manual-reject:hover{background:#ffe6e0}
 .manual-order-row .action-buttons{display:flex;gap:8px;flex-wrap:wrap}
 .manual-order-row .manual-approve:disabled,.manual-order-row .manual-reject:disabled{opacity:.5;cursor:not-allowed}
+
+/* Product images — compact media editor inside create/edit action */
+.action-media-editor{padding:14px;margin:16px 0;border:1px solid #bdddd4;border-radius:14px;background:linear-gradient(145deg,#f1faf6,#fff)}
+.action-media-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px}
+.action-media-heading strong{font-size:15px;color:#205f58}
+.action-media-heading span{font-size:11px;color:#5b807d}
+.action-file-label{display:block!important;text-align:center;cursor:pointer;background:#087e72!important;color:#fff!important;padding:13px!important;border-radius:10px;font-weight:800;font-size:13px;border:1px solid #0d695f}
+.action-file-label:hover{background:#075e56!important}
+#actionPhotos{width:100%;padding:9px 5px;background:transparent;border:0;font-size:12px;color:#5b7880}
+#actionPhotos::file-selector-button{padding:8px;margin-right:8px;border-radius:8px;background:#e1f3ec;border:1px solid #a5d7c4;color:#165e53;cursor:pointer}
+.action-photo-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0}
+.action-photo-preview:empty{display:none}
+.action-photo-preview>.help{grid-column:1/-1;margin:5px 0 0}
+.action-photo-card{display:flex;flex-direction:column;gap:6px;padding:8px;background:#fff;border:1px solid #d5e5e2;border-radius:10px;min-width:0}
+.action-photo-card img{width:100%;height:92px;object-fit:contain;background:#f2f7f7;border-radius:7px}
+.action-photo-card small{font-size:10px;color:#617d84;overflow-wrap:anywhere}
+.action-photo-controls{display:flex;flex-wrap:wrap;gap:5px}
+.action-photo-card button{min-height:30px!important;font-size:10px!important;padding:6px 8px!important}
+.action-image-link-details{margin-top:12px;border-top:1px solid #dce8e5;padding-top:10px}
+.action-image-link-details summary{font-size:12px;font-weight:700;color:#2c756e;cursor:pointer}
+@media(max-width:600px){.action-photo-preview{grid-template-columns:repeat(2,minmax(0,1fr))}.action-photo-card img{height:85px}}
