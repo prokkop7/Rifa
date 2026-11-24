@@ -114,7 +114,18 @@
 <label for="actionTitle">Título da ação</label><input id="actionTitle" required minlength="4" maxlength="110" placeholder="Ex.: Notebook Dell">
 <label for="actionDescription">Descrição e condições do prêmio</label><textarea id="actionDescription" rows="3" maxlength="3000" placeholder="Detalhes, condições e entrega"></textarea>
 <label for="actionCount">Quantidade de números para apresentação</label><input id="actionCount" type="number" min="1" max="10000" value="100" required>
-<label for="actionImage">Link HTTPS da imagem (opcional)</label><input id="actionImage" type="url" placeholder="https://..." maxlength="1200">
+<div class="action-media-editor">
+ <div class="action-media-heading"><strong>Imagens do prêmio</strong><span>Até 6 fotos por ação</span></div>
+ <p class="help">Adicione fotos reais do produto diretamente do celular ou computador. A primeira foto será a capa; você poderá trocar a capa, remover ou acrescentar imagens depois.</p>
+ <label for="actionPhotos" class="action-file-label">+ Selecionar fotos (JPG, PNG ou WebP)</label>
+ <input id="actionPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="actionPhotosHelp">
+ <p id="actionPhotosHelp" class="help">As fotos são otimizadas antes do envio. Mantenha visíveis as marcas de uso dos equipamentos.</p>
+ <div id="actionPendingPhotos" class="action-photo-preview" aria-live="polite"></div>
+ <div id="actionExistingPhotos" class="action-photo-preview" aria-live="polite"></div>
+ <details class="action-image-link-details"><summary>Ou informar um endereço de imagem HTTPS</summary>
+ <label for="actionImage">URL da imagem de capa (opcional)</label><input id="actionImage" type="url" placeholder="https://..." maxlength="1200">
+ </details>
+</div>
 <label for="actionPrice">Valor apresentado por número (R$)</label><input id="actionPrice" type="number" step="0.01" min="0" max="1000000" value="0.00" required><p class="help">Campo informativo de planejamento. Não habilita pagamento, reserva ou compra.</p>
 <label for="actionMax">Máximo de números por participante</label><input id="actionMax" type="number" min="1" max="10000" value="10" required>
 <label for="actionPrize">Detalhes do prêmio / entrega</label><textarea id="actionPrize" rows="3" maxlength="3000" placeholder="Produto, valor, condições do serviço ou entrega"></textarea>
