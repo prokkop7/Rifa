@@ -317,6 +317,23 @@ app.post("/api/actions/:slug/manual-requests",manualRequestLimiter,async(req,res
   next(e);
  }finally{client.release()}
 });
+// Public status is only readable with BOTH independent random identifiers from the receipt.
+const manualStatusLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:"draft-7",legacyHeaders:false});
+app.get("/api/manual-requests/:id/status",manualStatusLimiter,async(req,res,next)=>{
+ const customerId=String(req.query.customerId||"");
+ if(!uuid(req.params.id)||!uuid(customerId))return error(res,404,"Solicitação não encontrada");
+ try{
+  const q=await pool.query(
+   "select id,status,expires_at,reviewed_at from action_manual_requests "+
+   "where id=$1 and customer_id=$2",[req.params.id,customerId]);
+  if(!q.rowCount)return error(res,404,"Solicitação não encontrada");
+  const order=q.rows[0];
+  res.set("Cache-Control","no-store");
+  res.json({orderId:order.id,status:order.status,
+   expiresAt:order.expires_at,reviewedAt:order.reviewed_at,
+   approvalIsPaymentConfirmation:false});
+ }catch(e){next(e)}
+});
 app.get("/api/admin/manual-requests",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  try{
   await expireManualRequests(pool);
