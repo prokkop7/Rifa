@@ -183,8 +183,88 @@ function toLocalDateTime(value){
  const fmt=n=>String(n).padStart(2,"0");
  return d.getFullYear()+"-"+fmt(d.getMonth()+1)+"-"+fmt(d.getDate())+"T"+fmt(d.getHours())+":"+fmt(d.getMinutes());
 }
+let pendingActionFiles=[];
+function renderPendingActionPhotos(){
+ const host=$("#actionPendingPhotos");host.replaceChildren();
+ pendingActionFiles.forEach((file,index)=>{
+  const card=document.createElement("div");card.className="action-photo-card";
+  const image=document.createElement("img");image.alt="Nova foto: "+file.name;
+  const url=URL.createObjectURL(file);image.src=url;image.onload=()=>URL.revokeObjectURL(url);
+  const caption=document.createElement("small");caption.textContent=file.name;
+  const remove=document.createElement("button");remove.type="button";remove.className="outline";remove.textContent="Remover";
+  remove.addEventListener("click",()=>{pendingActionFiles.splice(index,1);renderPendingActionPhotos()});
+  card.append(image,caption,remove);host.append(card);
+ });
+}
+$("#actionPhotos").addEventListener("change",e=>{
+ const files=[...e.target.files];e.target.value="";
+ const allowed=["image/jpeg","image/png","image/webp"];
+ if(files.some(f=>!allowed.includes(f.type)||f.size>12000000)){actionMessage("Escolha imagens JPG, PNG ou WebP com até 12 MB cada.");return}
+ if(pendingActionFiles.length+files.length>6){actionMessage("Selecione no máximo seis fotos por vez.");return}
+ pendingActionFiles.push(...files);renderPendingActionPhotos();
+});
+async function optimizeActionPhoto(file){
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(Error("Não foi possível abrir "+file.name))};
+  img.onload=()=>{
+   URL.revokeObjectURL(url);
+   const size=Math.min(1,1400/Math.max(img.naturalWidth,img.naturalHeight));
+   const canvas=document.createElement("canvas");
+   canvas.width=Math.max(1,Math.round(img.naturalWidth*size));
+   canvas.height=Math.max(1,Math.round(img.naturalHeight*size));
+   const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(img,0,0,canvas.width,canvas.height);
+   const output=canvas.toDataURL("image/jpeg",0.82);
+   const raw=output.split(",")[1];
+   if(!raw||raw.length>2700000){reject(Error("Imagem muito grande; escolha uma foto menor."));return}
+   resolve({filename:file.name.replace(/\.[^.]+$/,"")+".jpg",mime:"image/jpeg",base64:raw});
+  };
+  img.src=url;
+ });
+}
+function actionImagePreview(images,actionId){
+ const host=$("#actionExistingPhotos");host.replaceChildren();
+ if(!images?.length)return;
+ const heading=document.createElement("p");heading.className="help";heading.textContent="Fotos já salvas nesta ação:";
+ host.append(heading);
+ for(const item of images){
+  const card=document.createElement("div");card.className="action-photo-card";
+  const img=document.createElement("img");img.src=item.url;img.alt=item.filename;
+  const name=document.createElement("small");name.textContent=item.isCover?"CAPA · "+item.filename:item.filename;
+  const controls=document.createElement("div");controls.className="action-photo-controls";
+  if(!item.isCover){
+   const cover=document.createElement("button");cover.type="button";cover.className="outline";cover.textContent="Definir capa";
+   cover.addEventListener("click",async()=>{
+    cover.disabled=true;
+    try{await call("POST","/api/admin/actions/"+actionId+"/images/"+item.id+"/cover",{});await loadActions();actionMessage("Capa atualizada.",true)}
+    catch(e){actionMessage(e.message)}finally{cover.disabled=false}
+   });controls.append(cover);
+  }
+  const remove=document.createElement("button");remove.type="button";remove.className="outline";remove.textContent="Excluir foto";
+  remove.addEventListener("click",async()=>{
+   if(!confirm("Excluir esta foto da ação?"))return;
+   remove.disabled=true;
+   try{await call("DELETE","/api/admin/actions/"+actionId+"/images/"+item.id);await loadActions();actionMessage("Foto excluída.",true)}
+   catch(e){actionMessage(e.message)}finally{remove.disabled=false}
+  });
+  controls.append(remove);card.append(img,name,controls);host.append(card);
+ }
+}
+async function uploadActionPhotos(actionId){
+ if(!pendingActionFiles.length)return 0;
+ const count=pendingActionFiles.length;
+ for(const file of [...pendingActionFiles]){
+  actionMessage("Enviando foto "+file.name+"...");
+  const data=await optimizeActionPhoto(file);
+  await call("POST","/api/admin/actions/"+encodeURIComponent(actionId)+"/images",data);
+  pendingActionFiles.shift();
+ }
+ renderPendingActionPhotos();
+ return count;
+}
 function resetActionForm(){
- editingAction=null;$("#actionForm").reset();
+ editingAction=null;pendingActionFiles=[];renderPendingActionPhotos();$("#actionExistingPhotos").replaceChildren();$("#actionForm").reset();
  $("#actionCount").value="100";$("#actionMax").value="10";$("#actionPrice").value="0.00";
  $("#actionSave").textContent="Criar ação e gerar link";$("#actionCancelEdit").hidden=true;
  $("#actionFormDetails").open=false;$("#actionFormSummary").textContent="+ Cadastrar nova ação";
@@ -202,6 +282,8 @@ function editAction(a){
  for(const [id,value]of Object.entries(fields))$("#"+id).value=value;
  $("#actionSave").textContent="Salvar alterações";$("#actionCancelEdit").hidden=false;
  $("#actionFormDetails").open=true;$("#actionFormSummary").textContent="Editar ação: "+a.title;
+ actionImagePreview(a.images||[],a.id);
+ pendingActionFiles=[];renderPendingActionPhotos();
  actionMessage("Editando: "+a.title,true);
  $("#actionForm").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -235,6 +317,7 @@ async function loadActions(){
   const r=await call("GET","/api/admin/actions");
   actionList.replaceChildren();
   r.actions.forEach(a=>actionList.append(actionRow(a)));
+  if(editingAction){const active=r.actions.find(a=>a.id===editingAction);if(active)actionImagePreview(active.images||[],active.id)}
   populateAuditActions(r.actions);await loadAudit();
   if(!r.actions.length)actionMessage("Nenhuma ação cadastrada ainda.",true);
  }catch(e){actionMessage(e.message)}
@@ -259,8 +342,19 @@ $("#actionForm").addEventListener("submit",async e=>{
  try{
   const editing=Boolean(editingAction);
   const r=await call(editing?"PUT":"POST",editing?"/api/admin/actions/"+encodeURIComponent(editingAction):"/api/admin/actions",actionInput());
-  resetActionForm();await loadActions();
-  actionMessage(editing?"Alterações salvas. Link mantido.":"Ação criada. Prévia: "+PUBLIC_ACTION_URL+r.action.slug,true);
+  const id=r.action.id;
+  try{
+   const sent=await uploadActionPhotos(id);
+   resetActionForm();await loadActions();
+   actionMessage((editing?"Alterações salvas.":"Ação criada.")+(sent?" "+sent+" foto(s) enviada(s).":"")+" Link: "+PUBLIC_ACTION_URL+r.action.slug,true);
+  }catch(uploadError){
+   editingAction=id;
+   $("#actionFormDetails").open=true;
+   $("#actionFormSummary").textContent="Continuar edição e envio de fotos";
+   $("#actionSave").textContent="Salvar e continuar envio";
+   await loadActions();
+   actionMessage("Ação salva, mas o envio de fotos ficou incompleto: "+uploadError.message+" Clique em Salvar novamente para tentar enviar as fotos restantes.");
+  }
  }catch(err){actionMessage(err.message)}finally{submit.disabled=false}
 });
 $("#actionCancelEdit").addEventListener("click",()=>{resetActionForm();actionMessage("Edição cancelada.",true)});
