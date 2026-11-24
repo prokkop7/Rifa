@@ -291,7 +291,8 @@ app.post("/api/actions/:slug/manual-requests",manualRequestLimiter,async(req,res
   const taken=await client.query(
    "select number from action_manual_request_numbers where action_id=$1 and number=any($2::int[]) "+
    "union select number from action_number_holds where action_id=$1 and number=any($2::int[]) and expires_at>now() "+
-   "union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",
+   "union select number from action_number_confirmations where action_id=$1 and number=any($2::int[]) "+
+   "union select number from action_manual_approved_numbers where action_id=$1 and number=any($2::int[])",
    [action.id,numbers]);
   if(taken.rowCount){await client.query("ROLLBACK");return error(res,409,"Um ou mais números já estão reservados")}
   const total=action.price_cents*numbers.length;
@@ -321,10 +322,65 @@ app.get("/api/admin/manual-requests",requireSecureAdminSetup,sessionAdmin,async(
   await expireManualRequests(pool);
   const q=await pool.query(
    "select r.id,r.customer_id,r.contact_name,r.contact_phone,r.numbers,r.quantity,r.unit_price_cents,r.total_cents,"+
-   "r.status,r.notification_status,r.notification_attempts,r.created_at,r.expires_at,a.title,a.slug "+
+   "r.status,r.notification_status,r.notification_attempts,r.created_at,r.expires_at,r.reviewed_at,r.reviewed_by,r.review_note,a.title,a.slug "+
    "from action_manual_requests r join action_catalog a on a.id=r.action_id order by r.created_at desc limit 100");
   res.set("Cache-Control","no-store");res.json({orders:q.rows});
  }catch(e){next(e)}
+});
+// Approve/reject a manual demo request after independent human review.
+// This is not proof of payment and does not generate any Asaas charge.
+app.post("/api/admin/manual-requests/:id/decision",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
+ if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
+ const decision=String(req.body?.decision||"");
+ const note=typeof req.body?.note==="string"?req.body.note.trim():"";
+ if(!["approved","rejected"].includes(decision)||note.length>500)return error(res,400,"Decisão ou justificativa inválida");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const probe=await client.query("select action_id from action_manual_requests where id=$1",[req.params.id]);
+  if(!probe.rowCount){await client.query("ROLLBACK");return error(res,404,"Pedido não encontrado")}
+  // Serialize with reservation creation on the action row before touching the order.
+  await client.query("select id from action_catalog where id=$1 for update",[probe.rows[0].action_id]);
+  const q=await client.query("select id,action_id,numbers,status,expires_at from action_manual_requests where id=$1 for update",[req.params.id]);
+  const order=q.rows[0];
+  if(order.status!=="reserved"||new Date(order.expires_at).getTime()<=Date.now()){
+   await client.query("ROLLBACK");return error(res,409,"O pedido não está mais pendente ou sua reserva venceu");
+  }
+  const reserved=await client.query("select number from action_manual_request_numbers where request_id=$1 order by number",[order.id]);
+  if(reserved.rowCount!==order.numbers.length){
+   await client.query("ROLLBACK");return error(res,409,"Os números da reserva não estão íntegros");
+  }
+  if(decision==="approved"){
+   // Stop approval if another kind of confirmation or hold occupies any number.
+   const occupied=await client.query(
+    "select number from action_number_confirmations where action_id=$1 and number=any($2::int[]) "+
+    "union select number from action_manual_approved_numbers where action_id=$1 and number=any($2::int[]) "+
+    "union select number from action_number_holds where action_id=$1 and number=any($2::int[]) and expires_at>now()",
+    [order.action_id,order.numbers]);
+   if(occupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Um ou mais números estão indisponíveis para aprovação")}
+   for(const number of order.numbers){
+    await client.query("insert into action_manual_approved_numbers(action_id,number,request_id) values($1,$2,$3)",
+     [order.action_id,number,order.id]);
+   }
+  }
+  // Approved numbers remain locked in their own ledger; rejected numbers are released.
+  await client.query("delete from action_manual_request_numbers where request_id=$1",[order.id]);
+  const actor=process.env.ADMIN_LOGIN_EMAIL||"administrador";
+  await client.query(
+   "update action_manual_requests set status=$2,reviewed_at=now(),reviewed_by=$3,review_note=$4,updated_at=now() where id=$1",
+   [order.id,decision,actor,note||null]);
+  await client.query(
+   "insert into action_manual_decisions(request_id,action_id,decision,reviewed_by,review_note) values($1,$2,$3,$4,$5)",
+   [order.id,order.action_id,decision,actor,note||null]);
+  await client.query("COMMIT");
+  res.set("Cache-Control","no-store");
+  res.json({orderId:order.id,status:decision,numbers:order.numbers,
+   numbersReleased:decision==="rejected",approvalIsPaymentConfirmation:false});
+ }catch(e){
+  await client.query("ROLLBACK").catch(()=>{});
+  if(e.code==="23505")return error(res,409,"Pedido ou números já processados");
+  next(e);
+ }finally{client.release()}
 });
 app.post("/api/admin/manual-requests/:id/retry",requireSecureAdminSetup,sessionAdmin,async(req,res,next)=>{
  if(!uuid(req.params.id))return error(res,400,"Pedido inválido");
@@ -355,7 +411,7 @@ app.get("/api/actions/:slug/numbers",async(req,res,next)=>{
   await expireManualRequests(pool,action.id);
   const [holds,confirmed,manual]=await Promise.all([
    pool.query("select number,expires_at from action_number_holds where action_id=$1 and expires_at>now()",[action.id]),
-   pool.query("select number from action_number_confirmations where action_id=$1",[action.id]),
+   pool.query("select number from action_number_confirmations where action_id=$1 union select number from action_manual_approved_numbers where action_id=$1",[action.id]),
    pool.query("select number from action_manual_request_numbers where action_id=$1",[action.id])
   ]);
   res.set("Cache-Control","no-store");
@@ -413,6 +469,8 @@ app.post("/api/actions/:slug/holds",previewHoldLimiter,requireParticipant,async(
    await client.query("ROLLBACK");return error(res,409,"Limite por participante atingido; libere a seleção anterior");
   }
   const manualOccupied=await client.query("select number from action_manual_request_numbers where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
+  const approvedOccupied=await client.query("select number from action_manual_approved_numbers where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
+  if(approvedOccupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Números já aprovados")}
   if(manualOccupied.rowCount){await client.query("ROLLBACK");return error(res,409,"Números reservados para atendimento WhatsApp")}
   const occupied=await client.query("select number from action_number_holds where action_id=$1 and number=any($2::int[]) union select number from action_number_confirmations where action_id=$1 and number=any($2::int[])",[action.id,numbers]);
   if(occupied.rowCount){await client.query("ROLLBACK");await auditHoldConflict(auditActionId,req.params.slug,auditPid,numbers);return error(res,409,"Um ou mais números já estão reservados ou confirmados")}
