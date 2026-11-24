@@ -89,14 +89,14 @@ app.post("/api/auth/logout",requireParticipant,async(req,res,next)=>{
 // Public previews only. Paid-number transactions remain unavailable.
 app.get("/api/actions",async(req,res,next)=>{
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,created_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where state='preview' order by created_at desc limit 100");
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,product_brand,product_model,product_condition,condition_notes,created_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where state='preview' order by created_at desc limit 100");
   res.set("Cache-Control","public, max-age=45");res.json({actions:q.rows,purchasesEnabled:false});
  }catch(e){next(e)}
 });
 app.get("/api/actions/:slug",async(req,res,next)=>{
  if(!/^[a-z0-9-]{8,90}$/.test(req.params.slug))return error(res,404,"Ação não encontrada");
  try{
-  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
+  const q=await pool.query("select slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,product_brand,product_model,product_condition,condition_notes,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images from action_catalog where slug=$1 and state='preview'",[req.params.slug]);
   if(!q.rowCount)return error(res,404,"Ação não encontrada");
   res.set("Cache-Control","public, max-age=45");res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
@@ -710,7 +710,7 @@ app.post("/api/admin/asaas/active-environment",requireSecureAdminSetup,sessionAd
 // Create, list and archive individual shareable action previews.
 // Administer configuration of individually linked action previews.
 // Prices are display-only. Payment routes do not allocate campaign numbers.
-const actionFields="id,slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,state,created_at,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images";
+const actionFields="id,slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,state,created_at,product_brand,product_model,product_condition,condition_notes,(select coalesce(json_agg(json_build_object('id',ai.id,'url','https://painel-acoes.rayaconnect.com.br/api/action-images/'||ai.id,'filename',ai.filename,'isCover',ai.is_cover) order by ai.is_cover desc,ai.sort_order,ai.uploaded_at),'[]'::json) from action_images ai where ai.action_id=action_catalog.id) as images";
 function parseActionInput(body){
  const title=String(body?.title||"").trim(),description=String(body?.description||"").trim();
  const prizeDetails=String(body?.prizeDetails||"").trim(),rulesText=String(body?.rulesText||"").trim();
@@ -718,9 +718,12 @@ function parseActionInput(body){
  const priceCents=Number(body?.priceCents),maxPerPerson=Number(body?.maxPerPerson);
  const imageUrl=String(body?.imageUrl||"").trim(),regulationUrl=String(body?.regulationUrl||"").trim();
  const startsAt=body?.startsAt||null,endsAt=body?.endsAt||null;
+ const productBrand=String(body?.productBrand||"").trim(),productModel=String(body?.productModel||"").trim();
+ const productCondition=String(body?.productCondition||"unspecified"),conditionNotes=String(body?.conditionNotes||"").trim();
  const httpsUrl=x=>{try{const u=new URL(x);return u.protocol==="https:"&&!!u.hostname&&!u.username&&!u.password}catch{return false}};
  if(!["product","money","service"].includes(category)||title.length<4||title.length>110||
   description.length>3000||prizeDetails.length>3000||rulesText.length>6000||
+  productBrand.length>80||productModel.length>120||conditionNotes.length>600||!["new","used","refurbished","unspecified"].includes(productCondition)||
   !Number.isSafeInteger(numberCount)||numberCount<1||numberCount>10000||
   !Number.isSafeInteger(priceCents)||priceCents<0||priceCents>100000000||
   !Number.isSafeInteger(maxPerPerson)||maxPerPerson<1||maxPerPerson>numberCount||
@@ -729,7 +732,7 @@ function parseActionInput(body){
   (startsAt&&(typeof startsAt!=="string"||isNaN(Date.parse(startsAt))))||
   (endsAt&&(typeof endsAt!=="string"||isNaN(Date.parse(endsAt))))||
   (startsAt&&endsAt&&Date.parse(endsAt)<=Date.parse(startsAt)))return null;
- return {title,description,prizeDetails,rulesText,category,numberCount,priceCents,maxPerPerson,imageUrl:imageUrl||null,regulationUrl:regulationUrl||null,startsAt,endsAt};
+ return {title,description,prizeDetails,rulesText,category,numberCount,priceCents,maxPerPerson,imageUrl:imageUrl||null,regulationUrl:regulationUrl||null,startsAt,endsAt,productBrand,productModel,productCondition,conditionNotes};
 }
 const uploadPhotoLimiter=rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:"draft-7",legacyHeaders:false});
 function validImageBytes(buffer,mime){
@@ -814,8 +817,8 @@ app.post("/api/admin/actions",requireSecureAdminSetup,sessionAdmin,async(req,res
  try{
   const slug=data.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,56)+"-"+randomBytes(4).toString("hex");
   const q=await pool.query(
-   "insert into action_catalog(slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning "+actionFields,
-   [slug,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt]);
+   "insert into action_catalog(slug,category,title,description,image_url,number_count,price_cents,prize_details,rules_text,regulation_url,max_numbers_per_person,starts_at,ends_at,product_brand,product_model,product_condition,condition_notes) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning "+actionFields,
+   [slug,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt,data.productBrand,data.productModel,data.productCondition,data.conditionNotes]);
   res.status(201).json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
 });
@@ -825,8 +828,8 @@ app.put("/api/admin/actions/:id",requireSecureAdminSetup,sessionAdmin,async(req,
  if(!data)return error(res,400,"Verifique tipo, título, preço, regras, quantidade, limites, URLs HTTPS e datas.");
  try{
   const q=await pool.query(
-   "update action_catalog set category=$2,title=$3,description=$4,image_url=$5,number_count=$6,price_cents=$7,prize_details=$8,rules_text=$9,regulation_url=$10,max_numbers_per_person=$11,starts_at=$12,ends_at=$13,updated_at=now() where id=$1 returning "+actionFields,
-   [req.params.id,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt]);
+   "update action_catalog set category=$2,title=$3,description=$4,image_url=$5,number_count=$6,price_cents=$7,prize_details=$8,rules_text=$9,regulation_url=$10,max_numbers_per_person=$11,starts_at=$12,ends_at=$13,product_brand=$14,product_model=$15,product_condition=$16,condition_notes=$17,updated_at=now() where id=$1 returning "+actionFields,
+   [req.params.id,data.category,data.title,data.description,data.imageUrl,data.numberCount,data.priceCents,data.prizeDetails,data.rulesText,data.regulationUrl,data.maxPerPerson,data.startsAt,data.endsAt,data.productBrand,data.productModel,data.productCondition,data.conditionNotes]);
   if(!q.rowCount)return error(res,404,"Ação não encontrada");
   res.json({action:q.rows[0],purchasesEnabled:false});
  }catch(e){next(e)}
