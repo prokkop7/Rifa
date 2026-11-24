@@ -192,7 +192,32 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 .uploaded-gallery-thumb[aria-pressed=true]{border-color:#138b7c;box-shadow:0 0 0 1px #138b7c}
 .uploaded-gallery-thumb img{display:block;width:100%;height:100%;object-fit:cover;border-radius:3px}
 .catalog-prize-cover{display:block;width:100%;height:125px;object-fit:contain;background:#eff6f6;border-radius:10px;margin-bottom:9px}
-.home-action{display:grid;grid-template-columns:minmax(105px,38%) 1fr;gap:12px;margin-top:13px;background:#fff;border:1px solid #d7e9e7;border-radius:14px;padding:10px}.home-action-photo{display:grid;place-items:center;background:#f0f6f5;border-radius:10px;overflow:hidden}.home-action-photo img{width:100%;height:175px;object-fit:contain}.home-action-overview{display:flex;flex-direction:column;justify-content:center;gap:8px}.home-action-overview h3{margin:0;font-size:19px;color:#223f47}.home-action-overview p{margin:0;color:#607982;font-size:12px}.home-action-value{font-weight:850;font-size:17px;color:#087e72}@media(max-width:460px){.home-action-photo img{height:140px}}</style></head>
+.home-action{display:grid;grid-template-columns:minmax(105px,38%) 1fr;gap:12px;margin-top:13px;background:#fff;border:1px solid #d7e9e7;border-radius:14px;padding:10px}.home-action-photo{display:grid;place-items:center;background:#f0f6f5;border-radius:10px;overflow:hidden}.home-action-photo img{width:100%;height:175px;object-fit:contain}.home-action-overview{display:flex;flex-direction:column;justify-content:center;gap:8px}.home-action-overview h3{margin:0;font-size:19px;color:#223f47}.home-action-overview p{margin:0;color:#607982;font-size:12px}.home-action-value{font-weight:850;font-size:17px;color:#087e72}@media(max-width:460px){.home-action-photo img{height:140px}}
+#acao .glass{padding:13px 16px 15px;max-width:780px;margin:0 auto;border-top:3px solid #299e8b}
+#acao .headline{font-size:clamp(22px,3vw,32px);line-height:1.17;margin:3px 0 10px}
+#acao .lead{font-size:11px;line-height:1.5;color:#617d86}
+#acao .uploaded-action-gallery{margin:10px 0 8px;padding:7px;background:#f5f9f9;border-color:#d7e7e7}
+#acao .action-uploaded-feature{max-height:250px;min-height:170px;background:#fff}
+#acao .action-uploaded-feature img{height:clamp(170px,28vw,250px)}
+.public-product-specs{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0}
+.product-condition-badge{display:inline-flex;padding:5px 10px;border-radius:8px;background:#e8f0ff;border:1px solid #c9d9f8;color:#305e97;font-size:12px;font-weight:850}
+.product-condition-badge[hidden],.product-brand-model[hidden],.product-wear-note[hidden]{display:none}
+.product-brand-model{font-size:12px;font-weight:750;color:#2a5061}
+.product-wear-note{flex-basis:100%;font-size:11px;color:#5d7880;margin:1px 0 3px;line-height:1.45}
+.public-price-highlight{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin:12px 0 9px;border:1px solid #c5e7d8;background:#edf9f3;border-radius:11px}
+.public-price-highlight>div{display:flex;flex-direction:column;gap:3px}
+.public-price-highlight small{font-size:11px;color:#527d73;font-weight:750}
+#acao .public-price-highlight strong{font-size:clamp(23px,3.6vw,30px);font-weight:900;color:#087c68;line-height:1.1}
+.public-price-caption{font-size:10px;line-height:1.4;color:#67867b;max-width:130px;text-align:right}
+.action-technical-details{border:1px solid #e1e9eb;background:#f9fbfb;border-radius:9px;padding:8px 11px;margin:8px 0}
+.action-technical-details summary{cursor:pointer;color:#6d858e;font-size:11px;font-weight:750}
+#acao .action-technical-details .sum{margin:6px 0;font-size:11px}
+#acao .action-technical-details .sum span{color:#789098;font-size:11px}
+#acao .action-technical-details .sum strong{font-size:12px;color:#58717b;font-weight:700}
+#acao .wizard-participate{margin-top:12px}
+#acao .wizard-short-notice{font-size:10px}
+@media(min-width:700px){#acao .uploaded-action-gallery{grid-template-columns:minmax(0,1fr) 64px;align-items:start}#acao .action-uploaded-thumbnails{flex-direction:column;max-height:250px;overflow-y:auto}#acao .uploaded-gallery-thumb{flex:none;width:60px}}
+</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
@@ -271,9 +296,16 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 <figure><img src="./images/dell.svg" alt="Ilustração do notebook Dell, Core i5 de 4ª geração, 4 GB de RAM e SSD 240 GB" loading="lazy"><figcaption><strong>Notebook Dell</strong><span>i5 · 4ª geração · 4 GB · SSD 240 GB</span></figcaption></figure>
 <figure><img src="./images/hp.svg" alt="Ilustração do notebook HP, Core i3 de 7ª geração, 8 GB de RAM e SSD 240 GB" loading="lazy"><figcaption><strong>Notebook HP</strong><span>i3 · 7ª geração · 8 GB · SSD 240 GB</span></figcaption></figure>
 </div>
-<div class="sum"><span>Números previstos</span><strong id="actionTotal">—</strong></div>
-<div class="sum"><span>Valor previsto por número</span><strong id="actionPriceDisplay">—</strong></div>
-<div class="sum"><span>Limite por participante</span><strong id="actionMaxDisplay">—</strong></div>
+<div class="public-product-specs" id="productSpecs">
+ <span id="productConditionBadge" class="product-condition-badge" hidden></span>
+ <div id="productBrandModel" class="product-brand-model" hidden></div>
+ <p id="productConditionNotes" class="product-wear-note" hidden></p>
+</div>
+<div class="public-price-highlight"><div><small>Valor por número</small><strong id="actionPriceDisplay">—</strong></div><span class="public-price-caption">Consulte os detalhes antes de participar</span></div>
+<details class="action-technical-details"><summary>Detalhes da participação</summary>
+ <div class="sum"><span>Números disponíveis na ação</span><strong id="actionTotal">—</strong></div>
+ <div class="sum"><span>Máximo por participante</span><strong id="actionMaxDisplay">—</strong></div>
+</details>
 <div class="sum" id="actionDatesRow" hidden><span>Período previsto</span><strong id="actionDatesDisplay">—</strong></div>
 <div class="action-extra" id="actionPrizeBox" hidden><div class="label">Detalhes do prêmio</div><p id="actionPrizeDisplay"></p></div>
 <div class="action-extra" id="actionRulesBox" hidden><div class="label">Condições da ação</div><p id="actionRulesDisplay"></p></div>
@@ -705,6 +737,17 @@ function showCatalogAction(a){
  $("#actionHeadline").textContent=a.title;
  $("#acao .wizard-more").open=false;
  $("#actionDescription").textContent=a.description||"Detalhes em preparação.";
+ const itemCondition={new:"Novo",used:"Usado",refurbished:"Recondicionado",unspecified:""};
+ const condition=itemCondition[a.product_condition]||"";
+ $("#productConditionBadge").hidden=!condition;
+ $("#productConditionBadge").textContent=condition;
+ const model=[a.product_brand,a.product_model].filter(Boolean).join(" · ");
+ $("#productBrandModel").hidden=!model;
+ $("#productBrandModel").textContent=model;
+ $("#productConditionNotes").hidden=!a.condition_notes;
+ $("#productConditionNotes").textContent=a.condition_notes||"";
+ $("#acao .action-technical-details").open=false;
+
  const hasUploadedPhotos=showUploadedActionGallery(a.images,a.title);
  $("#demoNotebooksGallery").hidden=hasUploadedPhotos||a.slug!=="demo-dois-notebooks";
  $("#actionTotal").textContent=String(a.number_count);
