@@ -217,7 +217,7 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 #acao .wizard-participate{margin-top:12px}
 #acao .wizard-short-notice{font-size:10px}
 @media(min-width:700px){#acao .uploaded-action-gallery{grid-template-columns:minmax(0,1fr) 64px;align-items:start}#acao .action-uploaded-thumbnails{flex-direction:column;max-height:250px;overflow-y:auto}#acao .uploaded-gallery-thumb{flex:none;width:60px}}
-</style></head>
+#acao .wizard-more .lead{font-size:11px;line-height:1.5;color:#607983;margin:8px 11px;display:block;overflow:visible}#acao .glass .wizard-more{margin-top:9px}</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
@@ -430,7 +430,7 @@ function setupWizardLayout(){
  const summary=document.createElement("summary");summary.textContent="Ver detalhes dos prêmios e condições";
  more.append(summary);
  $("#acao .glass").insertBefore(more,$("#actionPrizeBox"));
- more.append($("#actionPrizeBox"),$("#actionRulesBox"));
+ more.append($("#actionDescription"),$("#actionPrizeBox"),$("#actionRulesBox"));
 }
 setupWizardLayout();
 const WAITING_SESSION_KEY="acoes_manual_waiting_v1";
