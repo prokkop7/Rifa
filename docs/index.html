@@ -183,6 +183,15 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
  #etapa-numeros .action-number-grid{padding:3px}
  #etapa-numeros .action-selection-panel{padding:7px}
 }
+.uploaded-action-gallery{display:grid;gap:8px;margin:10px 0;border-radius:12px;background:#edf5f5;padding:9px;border:1px solid #d6e7e7}
+.uploaded-action-gallery[hidden]{display:none}
+.action-uploaded-feature{display:grid;place-items:center;background:#fff;border-radius:9px;min-height:170px;max-height:280px;overflow:hidden}
+.action-uploaded-feature img{display:block;max-width:100%;width:100%;height:clamp(165px,28vw,275px);object-fit:contain}
+.action-uploaded-thumbnails{display:flex;gap:7px;overflow-x:auto;padding:2px}
+.uploaded-gallery-thumb{padding:2px;flex:0 0 62px;height:52px;border:2px solid #d3e1e2;border-radius:7px;background:white;cursor:pointer}
+.uploaded-gallery-thumb[aria-pressed=true]{border-color:#138b7c;box-shadow:0 0 0 1px #138b7c}
+.uploaded-gallery-thumb img{display:block;width:100%;height:100%;object-fit:cover;border-radius:3px}
+.catalog-prize-cover{display:block;width:100%;height:125px;object-fit:contain;background:#eff6f6;border-radius:10px;margin-bottom:9px}
 </style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
@@ -269,6 +278,10 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 <section id="acao" class="panel" aria-label="Detalhes da ação">
 <div class="kicker" id="actionCategory">Ação</div><h1 class="headline" id="actionHeadline">Detalhes da ação</h1>
 <div class="glass"><img id="actionHero" class="action-hero" alt="" hidden><p class="lead" id="actionDescription">Conheça os detalhes.</p>
+<div id="actionUploadedGallery" class="uploaded-action-gallery" hidden aria-label="Fotos do prêmio">
+  <div class="action-uploaded-feature"><img id="actionFeaturedPhoto" alt="Foto do prêmio" loading="lazy"></div>
+  <div id="actionPhotoThumbnails" class="action-uploaded-thumbnails"></div>
+</div>
 <div id="demoNotebooksGallery" class="demo-notebook-gallery" hidden>
 <figure><img src="./images/dell.svg" alt="Ilustração do notebook Dell, Core i5 de 4ª geração, 4 GB de RAM e SSD 240 GB" loading="lazy"><figcaption><strong>Notebook Dell</strong><span>i5 · 4ª geração · 4 GB · SSD 240 GB</span></figcaption></figure>
 <figure><img src="./images/hp.svg" alt="Ilustração do notebook HP, Core i3 de 7ª geração, 8 GB de RAM e SSD 240 GB" loading="lazy"><figcaption><strong>Notebook HP</strong><span>i3 · 7ª geração · 8 GB · SSD 240 GB</span></figcaption></figure>
@@ -668,6 +681,27 @@ $("#actionReleaseButton").addEventListener("click",async()=>{
  }catch(e){actionHoldMessage(e.message)}
 });
 setInterval(()=>{if(currentCatalogAction&&($("#etapa-numeros").classList.contains("current")||$("#acao").classList.contains("current")))refreshActionNumbers()},15000);
+function showUploadedActionGallery(images,title){
+ const gallery=$("#actionUploadedGallery");
+ const thumbs=$("#actionPhotoThumbnails");thumbs.replaceChildren();
+ const photos=Array.isArray(images)?images.filter(p=>typeof p?.url==="string"&&p.url.startsWith("https://painel-acoes.rayaconnect.com.br/api/action-images/")):[];
+ gallery.hidden=!photos.length;
+ if(!photos.length)return false;
+ const featured=$("#actionFeaturedPhoto");
+ const choose=(photo,index)=>{
+  featured.src=photo.url;featured.alt="Foto "+(index+1)+" do prêmio: "+title;
+  for(const b of thumbs.children)b.setAttribute("aria-pressed",String(Number(b.dataset.index)===index));
+ };
+ for(const [index,p] of photos.entries()){
+  const button=document.createElement("button");button.type="button";
+  button.className="uploaded-gallery-thumb";button.dataset.index=String(index);
+  button.setAttribute("aria-label","Ver foto "+(index+1)+" do prêmio");
+  const img=document.createElement("img");img.src=p.url;img.alt="";img.loading="lazy";
+  button.append(img);button.addEventListener("click",()=>choose(p,index));thumbs.append(button);
+ }
+ choose(photos[0],0);
+ return true;
+}
 function showCatalogAction(a){
  currentCatalogAction=a;actionPage=0;actionSelected.clear();myActionHold=null;actionNumbers=null;
  $("#manualSuccess").hidden=true;$("#actionManualCheckout").hidden=true;
@@ -676,7 +710,8 @@ function showCatalogAction(a){
  $("#actionHeadline").textContent=a.title;
  $("#acao .wizard-more").open=false;
  $("#actionDescription").textContent=a.description||"Detalhes em preparação.";
- $("#demoNotebooksGallery").hidden=a.slug!=="demo-dois-notebooks";
+ const hasUploadedPhotos=showUploadedActionGallery(a.images,a.title);
+ $("#demoNotebooksGallery").hidden=hasUploadedPhotos||a.slug!=="demo-dois-notebooks";
  $("#actionTotal").textContent=String(a.number_count);
  $("#actionPriceDisplay").textContent=((a.price_cents||0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
  $("#actionMaxDisplay").textContent=String(a.max_numbers_per_person||10);
@@ -694,7 +729,7 @@ function showCatalogAction(a){
  link.hidden=!a.regulation_url;
  if(a.regulation_url){link.href=a.regulation_url}else{link.removeAttribute("href")}
  const img=$("#actionHero");
- if(a.image_url&&a.image_url.startsWith("https://")){img.src=a.image_url;img.alt="Imagem da ação "+a.title;img.hidden=a.slug==="demo-dois-notebooks"}
+ if(!hasUploadedPhotos&&a.image_url&&a.image_url.startsWith("https://")){img.src=a.image_url;img.alt="Imagem da ação "+a.title;img.hidden=a.slug==="demo-dois-notebooks"}
  else{img.hidden=true;img.removeAttribute("src")}
  tab("acao");refreshActionNumbers();loadCheckoutMethod();
  if(participantToken)recoverCurrentActionHold();
@@ -711,6 +746,12 @@ async function loadCatalog(){
    const title=document.createElement("h3");title.textContent=a.title;
    const p=document.createElement("p");p.textContent=(a.description||"").slice(0,210);
    const btn=document.createElement("button");btn.type="button";btn.className="button secondary";btn.textContent="Ver detalhes";btn.addEventListener("click",()=>{history.replaceState(null,"","?acao="+encodeURIComponent(a.slug));showCatalogAction(a)});
+   const cover=(a.images||[])[0]?.url||a.image_url;
+   if(typeof cover==="string"&&cover.startsWith("https://")){
+    const preview=document.createElement("img");preview.className="catalog-prize-cover";
+    preview.src=cover;preview.alt="Capa de "+a.title;preview.loading="lazy";
+    item.append(preview);
+   }
    item.append(kind,title,p,btn);catalog.append(item);
   }
   const slug=new URL(location.href).searchParams.get("acao");
