@@ -744,7 +744,7 @@ app.get("/api/action-images/:id",async(req,res,next)=>{
  try{
   const q=await pool.query("select i.mime_type,i.image_data from action_images i join action_catalog a on a.id=i.action_id where i.id=$1 and a.state='preview'",[req.params.id]);
   if(!q.rowCount)return error(res,404,"Imagem não encontrada");
-  res.set({"Content-Type":q.rows[0].mime_type,"X-Content-Type-Options":"nosniff","Cache-Control":"public,max-age=1800","Content-Security-Policy":"default-src 'none'; sandbox"});
+  res.set({"Content-Type":q.rows[0].mime_type,"X-Content-Type-Options":"nosniff","Cache-Control":"public,max-age=1800","Content-Security-Policy":"default-src 'none'; sandbox","Cross-Origin-Resource-Policy":"cross-origin","Access-Control-Allow-Origin":"*"});
   res.send(q.rows[0].image_data);
  }catch(e){next(e)}
 });
