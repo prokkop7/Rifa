@@ -283,6 +283,7 @@ function editAction(a){
  editingAction=a.id;
  const fields={
   actionType:a.category,actionTitle:a.title,actionDescription:a.description,
+  actionBrand:a.product_brand||"",actionModel:a.product_model||"",actionCondition:a.product_condition||"unspecified",actionConditionNotes:a.condition_notes||"",
   actionCount:a.number_count,actionImage:a.image_url||"",
   actionPrice:(a.price_cents/100).toFixed(2),actionMax:a.max_numbers_per_person,
   actionPrize:a.prize_details||"",actionRules:a.rules_text||"",
@@ -338,6 +339,7 @@ function actionInput(){
  const toIso=id=>$("#"+id).value?new Date($("#"+id).value).toISOString():null;
  return {
   category:$("#actionType").value,title:$("#actionTitle").value,
+  productBrand:$("#actionBrand").value,productModel:$("#actionModel").value,productCondition:$("#actionCondition").value,conditionNotes:$("#actionConditionNotes").value,
   description:$("#actionDescription").value,
   numberCount:Number($("#actionCount").value),
   imageUrl:$("#actionImage").value,
