@@ -204,23 +204,33 @@ $("#actionPhotos").addEventListener("change",e=>{
  pendingActionFiles.push(...files);renderPendingActionPhotos();
 });
 async function optimizeActionPhoto(file){
+ // The admin page's Content Security Policy allows data: images but not blob:.
+ // Use FileReader for both preview and canvas processing; blob: silently fails in some browsers.
+ const input=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onerror=()=>reject(Error("Não foi possível ler o arquivo "+file.name));
+  reader.onload=()=>resolve(reader.result);
+  reader.readAsDataURL(file);
+ });
  return new Promise((resolve,reject)=>{
-  const url=URL.createObjectURL(file),img=new Image();
-  img.onerror=()=>{URL.revokeObjectURL(url);reject(Error("Não foi possível abrir "+file.name))};
+  const img=new Image();
+  img.onerror=()=>reject(Error("Não foi possível abrir "+file.name+". Verifique se é uma imagem válida."));
   img.onload=()=>{
-   URL.revokeObjectURL(url);
-   const size=Math.min(1,1400/Math.max(img.naturalWidth,img.naturalHeight));
-   const canvas=document.createElement("canvas");
-   canvas.width=Math.max(1,Math.round(img.naturalWidth*size));
-   canvas.height=Math.max(1,Math.round(img.naturalHeight*size));
-   const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-   ctx.drawImage(img,0,0,canvas.width,canvas.height);
-   const output=canvas.toDataURL("image/jpeg",0.82);
-   const raw=output.split(",")[1];
-   if(!raw||raw.length>2700000){reject(Error("Imagem muito grande; escolha uma foto menor."));return}
-   resolve({filename:file.name.replace(/\.[^.]+$/,"")+".jpg",mime:"image/jpeg",base64:raw});
+   try{
+    const size=Math.min(1,1400/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(img.naturalWidth*size));
+    canvas.height=Math.max(1,Math.round(img.naturalHeight*size));
+    const ctx=canvas.getContext("2d");
+    if(!ctx)throw Error("Seu navegador não conseguiu processar a imagem");
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    const raw=canvas.toDataURL("image/jpeg",0.82).split(",")[1];
+    if(!raw||raw.length>2700000)throw Error("Imagem muito grande; escolha uma foto menor.");
+    resolve({filename:file.name.replace(/\.[^.]+$/,"")+".jpg",mime:"image/jpeg",base64:raw});
+   }catch(err){reject(err)}
   };
-  img.src=url;
+  img.src=input;
  });
 }
 function actionImagePreview(images,actionId){
