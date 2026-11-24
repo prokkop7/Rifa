@@ -192,19 +192,18 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 .uploaded-gallery-thumb[aria-pressed=true]{border-color:#138b7c;box-shadow:0 0 0 1px #138b7c}
 .uploaded-gallery-thumb img{display:block;width:100%;height:100%;object-fit:cover;border-radius:3px}
 .catalog-prize-cover{display:block;width:100%;height:125px;object-fit:contain;background:#eff6f6;border-radius:10px;margin-bottom:9px}
-</style></head>
+.home-action{display:grid;grid-template-columns:minmax(105px,38%) 1fr;gap:12px;margin-top:13px;background:#fff;border:1px solid #d7e9e7;border-radius:14px;padding:10px}.home-action-photo{display:grid;place-items:center;background:#f0f6f5;border-radius:10px;overflow:hidden}.home-action-photo img{width:100%;height:175px;object-fit:contain}.home-action-overview{display:flex;flex-direction:column;justify-content:center;gap:8px}.home-action-overview h3{margin:0;font-size:19px;color:#223f47}.home-action-overview p{margin:0;color:#607982;font-size:12px}.home-action-value{font-weight:850;font-size:17px;color:#087e72}@media(max-width:460px){.home-action-photo img{height:140px}}</style></head>
 <body><main><header class="top"><div class="brand">A<span>Ç</span>ÕES</div><span class="pill">PRÉVIA</span></header>
 <div class="body" id="scrollbody">
 <section id="inicio" class="panel current" aria-label="Início">
-<div class="kicker">Demonstração AÇÕES</div><h1 class="headline">Dois notebooks.<br><span class="mint">Dois prêmios.</span></h1>
-<p class="lead">Conheça os prêmios do evento e escolha seus números.</p>
+<div class="kicker">Demonstração AÇÕES</div><h1 class="headline">Confira os <span class="mint">produtos.</span></h1>
+<p class="lead">Conheça os detalhes do produto e escolha participar.</p>
 <div class="safety-mini"><span aria-label="Conexão HTTPS TLS">🔒 HTTPS / TLS</span><button type="button" data-tab="seguranca">Segurança</button><button type="button" data-tab="termos">Termos de uso</button></div>
-<div class="prize-pair">
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.svg" alt="Notebook Dell original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Notebook Dell</h3><p>Core i5 · 4ª geração<br>4 GB RAM · SSD 240 GB</p></div></article>
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.svg" alt="Notebook HP original" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>Notebook HP</h3><p>Core i3 · 7ª geração<br>8 GB RAM · SSD 240 GB</p></div></article>
-</div>
-<div class="metrics"><div class="metric"><strong>100</strong><span>Números</span></div><div class="metric"><strong>R$ 50</strong><span>Por número (demo)</span></div><div class="metric"><strong>02</strong><span>Prêmios</span></div></div>
-<div style="margin-top:15px"><button type="button" class="button demo-action-cta" id="demoHomeParticipate">Participar</button></div>
+<div class="home-action" id="homeActionSummary">
+ <div class="home-action-photo"><img id="homeActionCover" src="./images/dois-notebooks.svg" alt="Imagem da ação em destaque"></div>
+ <div class="home-action-overview"><span class="action-category">Ação em destaque</span><h3 id="homeActionTitle">Conheça a ação disponível</h3>
+ <p id="homeActionDesc">Veja as fotos, características e condições do produto.</p><span class="home-action-value" id="homeActionPrice"></span></div>
+ </div><div style="margin-top:15px"><button type="button" class="button demo-action-cta" id="demoHomeParticipate">Participar</button></div>
 </section>
 <section id="eventos" class="panel" aria-label="Eventos">
 <div class="kicker">Campanhas e resultados</div>
@@ -215,20 +214,6 @@ main{background:linear-gradient(180deg,#ffffff 0%,#f5f9fa 100%);box-shadow:0 18p
 <button type="button" class="event-filter" data-filter="disponivel" aria-pressed="false">Disponíveis</button>
 <button type="button" class="event-filter" data-filter="finalizado" aria-pressed="false">Finalizados</button>
 </div>
-<article class="glass event-item" data-status="preparacao">
-<button type="button" class="event-toggle" id="eventToggle" aria-expanded="false" aria-controls="eventDetails">
-<div><div class="label">EVENTO 001</div><h3>Dois notebooks</h3><p>Dell Core i5 + HP Core i3</p></div>
-<div class="event-side"><span class="event-status preparing">Em preparação</span><span class="event-chevron">⌄</span></div>
-</button>
-<div id="eventDetails" class="event-details" hidden>
-<div class="prize-pair">
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/dell.svg" alt="Notebook Dell" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 01</div><h3>Notebook Dell</h3><p>Core i5 · 4ª geração<br>4 GB · SSD 240 GB</p></div></article>
-<article class="glass gift prize-tile"><div class="thumb"><span class="computer">▱</span><img src="./images/hp.svg" alt="Notebook HP" onerror="this.remove()"></div><div class="gift-copy"><div class="label">Prêmio 02</div><h3>Notebook HP</h3><p>Core i3 · 7ª geração<br>8 GB · SSD 240 GB</p></div></article>
-</div>
-<div class="sum"><span>100 números</span><strong class="mint">R$ 50 cada</strong></div>
-<button class="button" type="button" id="demoEventParticipate">Participar</button>
-</div>
-</article>
 <div id="actionsCatalog" class="action-catalog" aria-live="polite"></div><p id="emptyEvents" class="empty-events" hidden>Nenhum evento nesta categoria.</p>
 </section>
 <section id="numeros" class="panel" aria-label="Números"><div class="kicker">Etapa 01 • Escolha</div><h1 class="headline">Escolha seus <span class="mint">números</span></h1><div class="legend"><span><i class="dot"></i>Disponível</span><span><i class="dot selected"></i>Selecionado</span></div><div id="grid" class="grid" aria-label="Grade de 100 números"></div>
@@ -495,8 +480,8 @@ async function openDemoWizard(destination="etapa-numeros"){
   tab(destination);
  }catch(e){tab("eventos");console.warn("AÇÕES demo navigation",e.message)}
 }
-$("#demoHomeParticipate").addEventListener("click",()=>openDemoWizard());
-$("#demoEventParticipate").addEventListener("click",()=>openDemoWizard());
+
+
 $("#startCatalogParticipation").addEventListener("click",()=>{
  if(!currentCatalogAction)return;
  $("#wizardNumbersAction").textContent=currentCatalogAction.title+" · Escolha seus números disponíveis.";
@@ -522,13 +507,23 @@ $("#checkoutModal").addEventListener("click",e=>{if(e.target===$("#checkoutModal
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#checkoutModal").hidden)closeCheckout()});
 $("#cancel").addEventListener("click",()=>{expiry=0;$("#clock").textContent="03:00";$("#activeReservation").hidden=true;$("#noReservation").hidden=false;selection.clear();render();tab("numeros")});
 
-const eventToggle=document.getElementById("eventToggle");
-eventToggle.addEventListener("click",()=>{const details=document.getElementById("eventDetails");const open=details.hidden;details.hidden=!open;eventToggle.setAttribute("aria-expanded",String(open))});
+let currentEventFilter="todos";
 document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{
- const filter=button.dataset.filter;document.querySelectorAll("[data-filter]").forEach(b=>{b.classList.toggle("active",b===button);b.setAttribute("aria-pressed",String(b===button))});
- let shown=0;document.querySelectorAll(".event-item").forEach(item=>{const visible=filter==="todos"||item.dataset.status===filter;item.hidden=!visible;if(visible)shown++});
- document.getElementById("emptyEvents").hidden=shown!==0;
+ currentEventFilter=button.dataset.filter;
+ document.querySelectorAll("[data-filter]").forEach(b=>{
+  b.classList.toggle("active",b===button);b.setAttribute("aria-pressed",String(b===button));
+ });
+ filterCatalogEvents();
 }));
+function filterCatalogEvents(){
+ const list=[...document.querySelectorAll("#actionsCatalog .event-item")];
+ let visible=0;
+ for(const item of list){
+  const show=currentEventFilter==="todos"||item.dataset.status===currentEventFilter;
+  item.hidden=!show;if(show)visible++;
+ }
+ $("#emptyEvents").hidden=visible!==0;
+}
 const catalogEndpoint="https://painel-acoes.rayaconnect.com.br/api/actions";
 const actionNames={product:"Produto",money:"Dinheiro",service:"Serviço"};
 let currentCatalogAction=null,actionNumbers=null,actionPage=0,actionSelected=new Set(),myActionHold=null;
@@ -740,8 +735,19 @@ async function loadCatalog(){
   if(!response.ok)throw Error("Catálogo indisponível");
   const data=await response.json(),catalog=$("#actionsCatalog");
   catalog.replaceChildren();
+  const featured=(data.actions||[]).find(x=>x.slug==="demo-dois-notebooks")||data.actions?.[0]||null;
+  if(featured){
+   $("#homeActionTitle").textContent=featured.title;
+   $("#homeActionDesc").textContent=featured.product_condition==="used"?
+    "Produto usado · Fotos reais e características disponíveis":
+    "Veja fotos, estado de conservação e detalhes.";
+   $("#homeActionPrice").textContent=((featured.price_cents||0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})+" por número";
+   const photo=featured.images?.[0]?.url||featured.image_url;
+   if(photo)$("#homeActionCover").src=photo;
+   $("#demoHomeParticipate").onclick=()=>showCatalogAction(featured);
+  }
   for(const a of data.actions||[]){
-   const item=document.createElement("article");item.className="glass";
+   const item=document.createElement("article");item.className="glass event-item";item.dataset.status="disponivel";
    const kind=document.createElement("div");kind.className="action-category";kind.textContent=actionNames[a.category]||"Ação";
    const title=document.createElement("h3");title.textContent=a.title;
    const p=document.createElement("p");p.textContent=(a.description||"").slice(0,210);
@@ -754,6 +760,7 @@ async function loadCatalog(){
    }
    item.append(kind,title,p,btn);catalog.append(item);
   }
+  filterCatalogEvents();
   const slug=new URL(location.href).searchParams.get("acao");
   if(slug&&/^[a-z0-9-]{8,90}$/.test(slug)){
    const res=await fetch(catalogEndpoint+"/"+encodeURIComponent(slug),{cache:"no-store"});
