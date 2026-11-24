@@ -19,6 +19,7 @@ const app=express();app.disable("x-powered-by");
 // Only trust X-Forwarded-* headers from the loopback HTTPS tunnel connector.
 app.set("trust proxy",1); // One trusted hop: private Docker gateway to the AÇÕES-only loopback port
 app.use(helmet());app.use(cors({origin:process.env.APP_ORIGIN.split(",").map(s=>s.trim())}));
+app.use("/api/admin/actions/:id/images",express.json({limit:"3mb"}));
 app.use(express.json({limit:"16kb"}));
 app.use("/api",rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:"draft-7",legacyHeaders:false}));
 const uuid=s=>typeof s==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
