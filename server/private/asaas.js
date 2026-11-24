@@ -189,7 +189,7 @@ function renderPendingActionPhotos(){
  pendingActionFiles.forEach((file,index)=>{
   const card=document.createElement("div");card.className="action-photo-card";
   const image=document.createElement("img");image.alt="Nova foto: "+file.name;
-  const url=URL.createObjectURL(file);image.src=url;image.onload=()=>URL.revokeObjectURL(url);
+  const reader=new FileReader();reader.onload=()=>{image.src=reader.result};reader.readAsDataURL(file);
   const caption=document.createElement("small");caption.textContent=file.name;
   const remove=document.createElement("button");remove.type="button";remove.className="outline";remove.textContent="Remover";
   remove.addEventListener("click",()=>{pendingActionFiles.splice(index,1);renderPendingActionPhotos()});
