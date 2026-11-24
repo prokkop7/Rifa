@@ -404,7 +404,40 @@ function setupWizardLayout(){
 }
 setupWizardLayout();
 const WAITING_SESSION_KEY="acoes_manual_waiting_v1";
+let waitingManualStatus="reserved";
+function applyWaitingStatus(status){
+ waitingManualStatus=status;
+ const label=$("#wizardStatusValue");
+ const heading=$("#etapa-aguardando .wizard-waiting-title");
+ const description=$("#wizardWaitingDetails>.lead");
+ const names={reserved:"Aguardando validação",approved:"Aprovado pelo administrador",rejected:"Não aprovado — números liberados",released:"Reserva liberada",expired:"Reserva expirada"};
+ label.textContent=names[status]||"Em análise";
+ heading.textContent=status==="approved"?"Solicitação aprovada":status==="rejected"?"Solicitação não aprovada":"Solicitação registrada";
+ description.textContent=status==="approved"?
+  "O administrador aprovou sua solicitação. Esta aprovação não substitui a confirmação financeira.":
+  status==="rejected"?"Esta solicitação não foi aprovada. Os números foram liberados para uma nova seleção.":
+  status==="expired"?"O prazo da reserva terminou e os números foram liberados.":
+  "Seus números estão reservados para conferência. Aguarde contato pelo WhatsApp informado. Isso não é confirmação de pagamento.";
+ if(status!=="reserved")$("#wizardRemaining").textContent="—";
+}
+async function refreshWaitingStatus(){
+ try{
+  const saved=JSON.parse(sessionStorage.getItem(WAITING_SESSION_KEY)||"null");
+  if(!saved?.orderId||!saved?.customerId)return;
+  const res=await fetch("https://painel-acoes.rayaconnect.com.br/api/manual-requests/"+
+   encodeURIComponent(saved.orderId)+"/status?customerId="+encodeURIComponent(saved.customerId),{cache:"no-store"});
+  if(!res.ok)return;
+  const data=await res.json();
+  if(["reserved","approved","rejected","released","expired"].includes(data.status)){
+   applyWaitingStatus(data.status);
+   if(saved.status!==data.status){
+    saved.status=data.status;sessionStorage.setItem(WAITING_SESSION_KEY,JSON.stringify(saved));
+   }
+  }
+ }catch{}
+}
 function updateWaitingClock(){
+ if(waitingManualStatus!=="reserved")return;
  const exp=Number($("#wizardWaitingDetails").dataset.expires)||0;
  if(!exp)return;
  const seconds=Math.max(0,Math.ceil((exp-Date.now())/1000));
@@ -414,10 +447,11 @@ function updateWaitingClock(){
   clock.textContent=String(Math.floor(seconds/3600)).padStart(2,"0")+":"+
    String(Math.floor((seconds%3600)/60)).padStart(2,"0")+":"+
    String(seconds%60).padStart(2,"0");
-  status.textContent="Aguardando atendimento";
+  status.textContent="Aguardando validação";
  }
 }
 function displayManualWaiting(data,save=true){
+ applyWaitingStatus(data.status||"reserved");
  const notice=$("#manualSuccess");notice.hidden=false;notice.replaceChildren();
  const title=document.createElement("strong");title.textContent="Protocolo de atendimento";
  const order=document.createElement("p");order.textContent="Pedido: "+data.orderId;
@@ -438,6 +472,7 @@ try{
  if(restored?.orderId&&restored?.expiresAt&&Array.isArray(restored.numbers))displayManualWaiting(restored,false);
 }catch{}
 setInterval(updateWaitingClock,1000);
+setInterval(()=>{if($("#etapa-aguardando").classList.contains("current"))refreshWaitingStatus()},15000);
 async function openDemoWizard(destination="etapa-numeros"){
  try{
   const response=await fetch("https://painel-acoes.rayaconnect.com.br/api/actions/demo-dois-notebooks",{cache:"no-store"});
@@ -458,6 +493,7 @@ $("#startCatalogParticipation").addEventListener("click",()=>{
 $("#backToAction").addEventListener("click",()=>tab("acao"));
 $("#pendingGoToActions").addEventListener("click",()=>tab("eventos"));
 $("#waitingBackToActions").addEventListener("click",()=>tab("eventos"));
+document.querySelector('[data-tab="etapa-aguardando"]').addEventListener("click",refreshWaitingStatus);
 function render(){const g=$("#grid");g.replaceChildren();for(let n=1;n<=100;n++){let b=document.createElement("button");b.className="num";b.type="button";b.textContent=fmt(n);b.setAttribute("aria-pressed",String(selection.has(n)));b.addEventListener("click",()=>{selection.has(n)?selection.delete(n):selection.add(n);render()});g.append(b)}$("#count").textContent=selection.size+" números";$("#total").textContent=money(selection.size);$("#reserve").disabled=!selection.size;$("#chosen").textContent=selection.size?Array.from(selection).sort((a,b)=>a-b).map(fmt).join(", "):"—";$("#reserveTotal").textContent=money(selection.size)}
 function tick(){if(!expiry)return;const sec=Math.max(0,Math.ceil((expiry-Date.now())/1000));$("#clock").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(sec===0){expiry=0;$("#activeReservation").hidden=true;$("#noReservation").hidden=false;}}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
@@ -537,6 +573,7 @@ $("#actionManualForm").addEventListener("submit",async e=>{
   displayManualWaiting(data);
   await refreshActionNumbers();
   tab("etapa-aguardando");
+  refreshWaitingStatus();
  }catch(err){$("#manualSubmitMessage").textContent=err.message;await refreshActionNumbers()}
  finally{submit.disabled=false}
 });
